@@ -57,8 +57,55 @@
 #include "stm32f429i_discovery_sdram.h"
 #include "../Components/ili9341/ili9341.h" 
 
+#define MAJVER 0u
+#define MINVER 0u
+#define BLDVER 2u
+#define YERVER 18u
+#define MONVER 05u
+#define DAYVER 29u
+#define HRSVER 16u
+#define MNSVER 17u
+#define APPNUM "2018_A021"
+#define APPNAME "LG AC Controller\IR emulator w/ autodefrost"
+#define AUTHRFULL "Vince Keiper"
+#define AUTHRABR "V.K. "
+
+
+
+
+#define AIN_TEMP_ROOM_Pin GPIO_PIN_6
+#define AIN_TEMP_ROOM_GPIO_Port GPIOF
+#define AIN_TEMP_ACOIL_Pin GPIO_PIN_5
+#define AIN_TEMP_ACOIL_GPIO_Port GPIOA
+
+
+#define DI_MANMODE_Pin GPIO_PIN_2
+#define DI_MANMODE_GPIO_Port GPIOE
+#define DI_DMD_Pin GPIO_PIN_3
+#define DI_DMD_GPIO_Port GPIOE
+#define DO_MAINS_SSR_Pin GPIO_PIN_4
+#define DO_MAINS_SSR_GPIO_Port GPIOE
+#define DO_CIRC_SSR_Pin GPIO_PIN_5
+#define DO_CIRC_SSR_GPIO_Port GPIOE
+#define DO_EVAP_SSR_Pin GPIO_PIN_6
+#define DO_EVAP_SSR_GPIO_Port GPIOE
+#define DO_IRLED_Pin GPIO_PIN_2
+#define DO_IRLED_GPIO_Port GPIOD
+#define IRLED_GPIO_CLK_ENABLE()                  __HAL_RCC_GPIOD_CLK_ENABLE()  
+#define IRLED_GPIO_CLK_DISABLE()                 __HAL_RCC_GPIOD_CLK_DISABLE()  
+
 /* Exported types ------------------------------------------------------------*/
+typedef enum
+{
+    FALSE,
+    TRUE
+} bool;
 /* Exported constants --------------------------------------------------------*/
+
+
+/* Exported functions --------------------------------------------------------*/
+void BSP_Background(void);
+
 
 #endif /* __MAIN_H */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

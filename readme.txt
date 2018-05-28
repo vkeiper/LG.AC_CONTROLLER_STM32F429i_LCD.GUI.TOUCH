@@ -5,7 +5,7 @@
   ******************** (C) COPYRIGHT 2018 VGK AMFT Software  *******************
   * @file    STemWin_/readme.txt 
   * @author  Vince Keiper 
-  * @version V0.0.1
+  * @version V0.0.2  (See main.h for controlled version reporting )
   * @date    28-May-2018    
   * @brief   Based off the STemWin template for the STM32F429i disco board. 
   ******************************************************************************

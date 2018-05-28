@@ -47,16 +47,26 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "WM.h"
+#include "ir_rmt_txr.h"
+#include "tim.h"
+#include "adc.h"
+#include "gpio.h"
+#include "10kntc.h"
+#include "hvac_ctl.h"
 
+
+/* Global variables -----------------------------------------------------------*/
 extern WM_HWIN CreateWindow(void);
+
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 uint8_t GUI_Initialized = 0;
-TIM_HandleTypeDef TimHandle;
-uint32_t uwPrescalerValue = 0;
+
+__IO uint8_t ubKeyPressed = RESET; 
+uint8_t i;
 
 /* Private function prototypes -----------------------------------------------*/
 static void BSP_Config(void);
@@ -76,6 +86,8 @@ extern void MainTask(void);
 int main(void)
 {  
 	static uint32_t t_gui=0;
+	static uint32_t t_run=0, t_txmode=0;
+  
 	
   /* STM32F4xx HAL library initialization:
        - Configure the Flash prefetch, instruction and Data caches
@@ -91,41 +103,13 @@ int main(void)
   /* Configure the system clock to 180 MHz */
   SystemClock_Config();
   
-  /***********************************************************/
-  
-   /* Compute the prescaler value to have TIM3 counter clock equal to 10 KHz */
-  uwPrescalerValue = (uint32_t) ((SystemCoreClock /2) / 10000) - 1;
-  
-  /* Set TIMx instance */
-  TimHandle.Instance = TIM3;
-   
-  /* Initialize TIM3 peripheral as follows:
-       + Period = 500 - 1
-       + Prescaler = ((SystemCoreClock/2)/10000) - 1
-       + ClockDivision = 0
-       + Counter direction = Up
-  */
-  TimHandle.Init.Period = 500 - 1;
-  TimHandle.Init.Prescaler = uwPrescalerValue;
-  TimHandle.Init.ClockDivision = 0;
-  TimHandle.Init.CounterMode = TIM_COUNTERMODE_UP;
-  if(HAL_TIM_Base_Init(&TimHandle) != HAL_OK)
-  {
-    while(1) 
-    {
-    }
-  }
-  
-  /*##-2- Start the TIM Base generation in interrupt mode ####################*/
-  /* Start Channel1 */
-  if(HAL_TIM_Base_Start_IT(&TimHandle) != HAL_OK)
-  {
-    while(1) 
-    {
-    }
-  }
-  
-  /***********************************************************/
+	
+		
+	MX_ADC1_Init();
+  MX_ADC3_Init();
+  MX_GPIO_Init();
+	
+  TIM3_Init();
   
   /* Init the STemWin GUI Library */
   GUI_Init();
@@ -133,8 +117,8 @@ int main(void)
   
   /* Activate the use of memory device feature */
   WM_SetCreateFlags(WM_CF_MEMDEV);
-  
-  //MainTask();
+
+	/*VK, create default HVAC dialog screen*/
 	CreateWindow();
   
 	/* Infinite loop */  
@@ -144,40 +128,69 @@ int main(void)
 				t_gui = HAL_GetTick();
 				GUI_Exec();// one call to load main screen
 			}
-  }
+			
+			/* Run HVAC control\monitoring\auto-defrost */
+			DoHvacSimpleMode();
+		
+			/* Transmit IR Remote commands is requested                   */
+			/* Mode change method async of the DoHvac...                  */
+			/* Mode change register is set in DoHvac with qty tx's needed */
+			if(t_txmode ==0 && ctldata_s.bModeChg >0){
+					t_txmode = HAL_GetTick();
+					ctldata_s.bModeChg--;	
+			}
+			/* Trigger Mode button press ever 200mS if timer has been set above */
+			if(t_txmode !=0 && (HAL_GetTick() > t_txmode + 200)){
+					SendFrame(BTN_MOD);
+					t_txmode=0;
+			}
+			
+			
+			if(HAL_GetTick() > t_run + 1000){
+				t_run = HAL_GetTick();
+				
+			}else{
+				
+				if(ubKeyPressed == SET){
+						SendFrame(BTN_PWR);
+			
+						ubKeyPressed = RESET;
+				}
+			}
+	}
 }
 
-/**
-  * @brief  Period elapsed callback in non blocking mode
-  * @param  htim: TIM handle
-  * @retval None
-  */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  BSP_Background();
-}
+///**
+//  * @brief  Period elapsed callback in non blocking mode
+//  * @param  htim: TIM handle
+//  * @retval None
+//  */
+//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+//{
+//  BSP_Background();
+//}
 
-/**
-  * @brief TIM MSP Initialization 
-  *        This function configures the hardware resources used in This application: 
-  *           - Peripheral's clock enable
-  *           - Peripheral's GPIO Configuration  
-  * @param htim: TIM handle pointer
-  * @retval None
-  */
-void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim)
-{
-  /*##-1- Enable peripherals and GPIO Clocks #################################*/
-  /* TIMx Peripheral clock enable */
-  __HAL_RCC_TIM3_CLK_ENABLE();
+///**
+//  * @brief TIM MSP Initialization 
+//  *        This function configures the hardware resources used in This application: 
+//  *           - Peripheral's clock enable
+//  *           - Peripheral's GPIO Configuration  
+//  * @param htim: TIM handle pointer
+//  * @retval None
+//  */
+//void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim)
+//{
+//  /*##-1- Enable peripherals and GPIO Clocks #################################*/
+//  /* TIMx Peripheral clock enable */
+//  __HAL_RCC_TIM3_CLK_ENABLE();
 
-  /*##-2- Configure the NVIC for TIMx ########################################*/
-  /* Set the TIMx priority */
-  HAL_NVIC_SetPriority(TIM3_IRQn, 0, 1);
-  
-  /* Enable the TIMx global Interrupt */
-  HAL_NVIC_EnableIRQ(TIM3_IRQn);
-}
+//  /*##-2- Configure the NVIC for TIMx ########################################*/
+//  /* Set the TIMx priority */
+//  HAL_NVIC_SetPriority(TIM3_IRQn, 0, 1);
+//  
+//  /* Enable the TIMx global Interrupt */
+//  HAL_NVIC_EnableIRQ(TIM3_IRQn);
+//}
 
 /**
   * @brief  Initializes the STM32F429I-DISCO's LCD and LEDs resources.
@@ -197,7 +210,11 @@ static void BSP_Config(void)
   BSP_TS_Init(240, 320);
   
   /* Enable the CRC Module */
+	/* VK, this unlocks STemWin to be used under free ST license */
   __HAL_RCC_CRC_CLK_ENABLE();
+	
+	  /* Configure USER Button */
+  BSP_PB_Init(BUTTON_KEY, BUTTON_MODE_EXTI);
 }
 
 /**
@@ -207,8 +224,8 @@ static void BSP_Config(void)
   */ 
 void BSP_Background(void)
 {
+	/*Toggle the HB led*/
   BSP_LED_Toggle(LED3);
-  BSP_LED_Toggle(LED4);
   
   /* Capture input event and update cursor */
   if(GUI_Initialized == 1)
@@ -308,6 +325,36 @@ static void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;  
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;  
   HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5);
+}
+
+
+
+/**
+  * @brief  EXTI line detection callbacks.
+  * @param  GPIO_Pin: Specifies the pins connected EXTI line
+  * @retval None
+  */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+ if (GPIO_Pin == KEY_BUTTON_PIN)
+ {
+   ubKeyPressed = SET;
+ }
+}
+
+/**
+  * @author  Vince Keiper
+  * @brief  Systick callback for my application use (non system)
+  * @param  None
+  * @retval None
+  */
+void HAL_SYSTICK_Callback(void){
+	static uint16_t ticks=1000;
+	
+	if(--ticks==0){
+		ticks=1000;
+		calc_uptime(time_s.time++);
+	}
 }
 
 #ifdef  USE_FULL_ASSERT

@@ -53,6 +53,11 @@ void SysTick_Handler(void);
 void LTDC_IRQHandler(void);
 void TIM3_IRQHandler(void);
 
+void EXTI0_IRQHandler(void);
+void EXTI2_IRQHandler(void);
+void EXTI15_10_IRQHandler(void);
+void TIM1_UP_TIM10_IRQHandler(void);
+
 #ifdef __cplusplus
 }
 #endif

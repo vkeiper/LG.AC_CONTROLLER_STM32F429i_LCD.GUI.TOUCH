@@ -673,8 +673,8 @@ static const void * _GetImageById(U32 Id, U32 * pSize) {
 }
 
 // USER START (Optionally insert additional static code)
-int8_t scTempRoom=0;
-char dispstr[64];
+static int8_t scTempRoom=0;
+static char dispstr[64];
 
 // USER END
 

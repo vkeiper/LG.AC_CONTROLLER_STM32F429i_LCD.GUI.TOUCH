@@ -386,6 +386,11 @@
               <FileType>5</FileType>
               <FilePath>../readme.txt</FilePath>
             </File>
+            <File>
+              <FileName>README.md</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\README.md</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -516,16 +521,21 @@
               <FileType>1</FileType>
               <FilePath>../../../../../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c</FilePath>
             </File>
+            <File>
+              <FileName>stm32f4xx_hal_adc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\..\..\..\Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_adc.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_hal_adc_ex.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\..\..\..\Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_adc_ex.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
           <GroupName>Application/User</GroupName>
           <Files>
-            <File>
-              <FileName>BASIC_HelloWorld.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Src/BASIC_HelloWorld.c</FilePath>
-            </File>
             <File>
               <FileName>stm32f4xx_it.c</FileName>
               <FileType>1</FileType>
@@ -540,6 +550,36 @@
               <FileName>WindowDLG.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\WindowDLG.c</FilePath>
+            </File>
+            <File>
+              <FileName>10kntc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\10kntc.c</FilePath>
+            </File>
+            <File>
+              <FileName>adc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\adc.c</FilePath>
+            </File>
+            <File>
+              <FileName>gpio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\gpio.c</FilePath>
+            </File>
+            <File>
+              <FileName>hvac_ctl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\hvac_ctl.c</FilePath>
+            </File>
+            <File>
+              <FileName>ir_rmt_txr.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\ir_rmt_txr.c</FilePath>
+            </File>
+            <File>
+              <FileName>tim.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\tim.c</FilePath>
             </File>
           </Files>
         </Group>

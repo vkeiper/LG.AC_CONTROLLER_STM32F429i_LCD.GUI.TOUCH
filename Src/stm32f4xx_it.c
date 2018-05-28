@@ -37,7 +37,9 @@
 /* Private variables ---------------------------------------------------------*/
 extern volatile GUI_TIMER_TIME OS_TimeMS;
 extern LTDC_HandleTypeDef hltdc;
-extern TIM_HandleTypeDef TimHandle;
+extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim1;
+
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -125,8 +127,26 @@ void SysTick_Handler(void)
 {
   /* Update the LocalTime by adding 1 ms each SysTick interrupt */
   HAL_IncTick();
-  
-  OS_TimeMS++;
+	HAL_SYSTICK_IRQHandler();  
+  OS_TimeMS++;/*vk, used for emWin*/
+}
+
+
+/******************************************************************************/
+/*                 STM32F4xx Peripherals Interrupt Handlers                   */
+/*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
+/*  available peripheral interrupt handler's name please refer to the startup */
+/*  file (startup_stm32f4xx.s).                                               */
+/******************************************************************************/
+
+/**
+  * @brief  This function handles External line 0 interrupt request.
+  * @param  None
+  * @retval None
+  */
+void EXTI0_IRQHandler(void)
+{
+  HAL_GPIO_EXTI_IRQHandler(KEY_BUTTON_PIN);
 }
 
 /******************************************************************************/
@@ -144,7 +164,13 @@ void SysTick_Handler(void)
 /*void PPP_IRQHandler(void)
 {
 }*/
-
+/**
+* @brief This function handles TIM1 update interrupt and TIM10 global interrupt.
+*/
+void TIM1_UP_TIM10_IRQHandler(void)
+{
+  HAL_TIM_IRQHandler(&htim1);
+}
 /**
   * @brief  This function handles TIM interrupt request.
   * @param  None
@@ -152,7 +178,7 @@ void SysTick_Handler(void)
   */
 void TIM3_IRQHandler(void)
 {
-  HAL_TIM_IRQHandler(&TimHandle);
+  HAL_TIM_IRQHandler(&htim3);
 }
 
 /**
