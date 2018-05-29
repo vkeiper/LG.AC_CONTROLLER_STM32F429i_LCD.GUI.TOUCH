@@ -19,9 +19,10 @@
 
 //#define DBGFROST1
 //#define DBGFROST2
-//#define DBGFROST3  //shows when frost flt is asserted
+#define DBGFROST3  //shows when frost flt is asserted
 //#define DBGFROST4
-//#define DBGFROST5
+#define DBGFROST5
+#define DBGFROST6
 //#define DBGTSTAT1
 //#define DBGTSTAT2
 //#define DBGTSTAT3
@@ -58,7 +59,7 @@ void DoHvacSimpleMode(void)
 				  t_retry = GetTick();
 					// change to fan only mode so compressor shuts off
 				  // this allows frost to melt
-				  ctldata_s.bModeChg = 2;
+				  ctldata_s.bModeChg = 1;
 
 			}else{
 				  /* Not in frost error & waiting to turn back on due to a previous frost error*/ 
@@ -68,7 +69,7 @@ void DoHvacSimpleMode(void)
 								if(!bModeCool){
 									  bModeCool = TRUE;
 									  /* change to cool mode after timeout, there are 4 modes so 2 switches  */
-										ctldata_s.bModeChg = 2;
+										ctldata_s.bModeChg = 1;
 
 								}else{
 									  /*AC set point is 65 and no fault */
@@ -83,9 +84,12 @@ void DoHvacSimpleMode(void)
 										/*AC set point is 65 and no fault */
 									  BSP_LED_Toggle(LED4);/*toggle during count down to CLEAR Fault LED*/
 #ifdef DBGFROST5
-										sprintf(&dbgstr[0],"WarmUp Period %dSecs Left\n",
+										sprintf(&dbglog[0],"Warm-Up Period %d Secs remaining Left\n",
 												(((t_retry +  (1000*60*3))-GetTick())/1000));
-										LCD_UsrLog("%s",dbgstr);
+												// time left  = tick_frst + 180,000  - ticknow  /180000
+												float tms  = ((t_retry +  (1000*60*3))-GetTick());
+										    tms = ((float)tms/180000.0)*100.0;
+												ctldata_s.ucWarmPcnt = (uint8_t)tms;
 #endif
 							}						
 					}		
@@ -125,9 +129,9 @@ static bool FrostCheck(void)
 #endif    
   
   if( ctldata_s.cond_s.rdb <32 ){
-    #ifdef DBGFROST3
-        LCD_DbgLog("FROST EMINENT %d \n",cnt);
-    #endif
+#ifdef DBGFROST3
+        sprintf(dbglog,"FROST EMINENT %d",cnt);
+#endif
 		if(cnt++>=5){
 			cnt=0;
 			ctldata_s.bFrostErr = TRUE;
@@ -143,7 +147,7 @@ static bool FrostCheck(void)
 				if(cnt==0){
 					ctldata_s.bFrostErr = (bWarmedUp(ctldata_s.cond_s.rdb,ctldata_s.cond_s.rnghi) == TRUE ? FALSE : TRUE );
 #ifdef DBGFROST6
-					LCD_UsrLog("NO FROST count%d\n",cnt);
+					sprintf(dbglog,"NO FROST count%d",cnt);
 #endif
 				}
     }

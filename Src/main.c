@@ -64,7 +64,7 @@ extern WM_HWIN CreateWindow(void);
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 uint8_t GUI_Initialized = 0;
-
+char dbglog[64];
 __IO uint8_t ubKeyPressed = RESET; 
 uint8_t i;
 
@@ -141,11 +141,13 @@ int main(void)
 			}
 			/* Trigger Mode button press ever 200mS if timer has been set above */
 			if(t_txmode !=0 && (HAL_GetTick() > t_txmode + 200)){
-					SendFrame(BTN_MOD);
+					SendFrame(BTN_PWR);
+				  sprintf(dbglog,"Sent Power ON-OFF");
 					t_txmode=0;
 			}
 			
 			
+			/*Send PWR if button clicked*/
 			if(HAL_GetTick() > t_run + 1000){
 				t_run = HAL_GetTick();
 				

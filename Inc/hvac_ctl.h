@@ -75,6 +75,7 @@ struct s_control{
 	int8_t tempint;
 	int8_t vrefint;
 	uint8_t bModeChg;
+	uint8_t ucWarmPcnt;
 };
 
 extern struct s_control ctldata_s;

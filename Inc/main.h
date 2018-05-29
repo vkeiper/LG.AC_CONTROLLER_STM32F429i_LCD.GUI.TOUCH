@@ -62,9 +62,9 @@
 #define BLDVER 2u
 #define YERVER 18u
 #define MONVER 05u
-#define DAYVER 29u
-#define HRSVER 16u
-#define MNSVER 17u
+#define DAYVER 28u
+#define HRSVER 20u
+#define MNSVER 42u
 #define APPNUM "2018_A021"
 #define APPNAME "LG AC Controller\IR emulator w/ autodefrost"
 #define AUTHRFULL "Vince Keiper"
@@ -94,6 +94,8 @@
 #define IRLED_GPIO_CLK_ENABLE()                  __HAL_RCC_GPIOD_CLK_ENABLE()  
 #define IRLED_GPIO_CLK_DISABLE()                 __HAL_RCC_GPIOD_CLK_DISABLE()  
 
+/* Exported variables --------------------------------------------------------*/
+extern char dbglog[64];
 /* Exported types ------------------------------------------------------------*/
 typedef enum
 {

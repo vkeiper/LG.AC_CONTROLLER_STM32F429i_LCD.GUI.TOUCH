@@ -25,6 +25,10 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include "main.h"
+#include "hvac_ctl.h"
+#include "ir_rmt_txr.h"
+
 /*********************************************************************
 *
 *       Defines
@@ -41,6 +45,8 @@
 #define ID_IMAGE_1       (GUI_ID_USER + 0x0A)
 #define ID_IMAGE_2       (GUI_ID_USER + 0x0B)
 #define ID_BUTTON_0       (GUI_ID_USER + 0x0D)
+#define ID_TEXT_4       (GUI_ID_USER + 0x0E)
+#define ID_PROGBAR_0       (GUI_ID_USER + 0x0F)
 
 #define ID_IMAGE_0_IMAGE_0       0x00
 #define ID_IMAGE_1_IMAGE_0       0x01
@@ -643,8 +649,8 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
   { IMAGE_CreateIndirect, "Image", ID_IMAGE_1, 162, 132, 50, 50, 0, 0, 0 },
   { IMAGE_CreateIndirect, "Image", ID_IMAGE_2, 17, 130, 50, 50, 0, 0, 0 },
   { BUTTON_CreateIndirect, "btnPwr", ID_BUTTON_0, 146, 34, 50, 50, 0, 0x0, 0 },
-  // USER START (Optionally insert additional widgets)
-  // USER END
+  { TEXT_CreateIndirect, "txtDbg", ID_TEXT_4, 3, 299, 232, 20, 0, 0x64, 0 },
+  { PROGBAR_CreateIndirect, "prgWarmup", ID_PROGBAR_0, 208, 216, 20, 80, 1, 0x0, 0 },
 };
 
 /*********************************************************************
@@ -672,11 +678,33 @@ static const void * _GetImageById(U32 Id, U32 * pSize) {
   return NULL;
 }
 
-// USER START (Optionally insert additional static code)
+
 static int8_t scTempRoom=0;
 static char dispstr[64];
 
-// USER END
+WM_HWIN hWinSysStatus_hdl;
+static WM_HWIN hNewWin;
+static WM_HTIMER hNewTimer;
+
+//static WM_MESSAGE lpMsg;
+static void _cbWin(WM_MESSAGE * pMsg) {
+	switch (pMsg->MsgId) {
+	case WM_TIMER:
+		/*
+		... restart timer and invalidate window to update widgets ...
+		*/
+		WM_RestartTimer(hNewTimer, 400);
+		if (WM_IsWindow(hWinSysStatus_hdl))
+		{
+        WM_Invalidate(hWinSysStatus_hdl);
+		}
+		break;
+	default:
+		WM_DefaultProc(pMsg);
+	}
+}
+
+
 
 /*********************************************************************
 *
@@ -688,6 +716,8 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
   U32          FileSize;
   int          NCode;
   int          Id;
+	static uint32_t t_dbglog=0;
+	
   // USER START (Optionally insert additional variables)
   // USER END
 
@@ -750,8 +780,21 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     //
     hItem = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_0);
     BUTTON_SetText(hItem, "Power");
-    // USER START (Optionally insert additional code for further widget initialization)
-    // USER END
+		
+		    hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_4);
+    TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x000000FF));
+    TEXT_SetText(hItem, "Debug Log");
+    TEXT_SetTextAlign(hItem, GUI_TA_LEFT | GUI_TA_BOTTOM);
+    TEXT_SetFont(hItem, GUI_FONT_13_1);
+    //
+    // Initialization of 'prgWarmup'
+    //
+    hItem = WM_GetDialogItem(pMsg->hWin, ID_PROGBAR_0);
+    PROGBAR_SetFont(hItem, GUI_FONT_6X8);
+    
+		hNewWin = WM_CreateWindow(1, 1, 1, 1, WM_CF_SHOW, _cbWin, 0);
+	  WM_HideWindow(hNewWin);
+		hNewTimer = WM_CreateTimer(hNewWin, 0, 1000, 0);
     break;
   case WM_NOTIFY_PARENT:
     Id    = WM_GetId(pMsg->hWinSrc);
@@ -794,12 +837,64 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       // USER END
       }
       break;
-    // USER START (Optionally insert additional code for further Ids)
-    // USER END
+			
+			
+		case ID_IMAGE_2: // Notifications sent by 'power icon'
+      switch(NCode) {
+      case WM_NOTIFICATION_CLICKED:
+				/*trigger power on\off command to be sent over IRLED*/
+        ctldata_s.bModeChg =1;
+			break;
+      }
+		break;
+    
+			
     }
     break;
-  // USER START (Optionally insert additional message handling)
-  // USER END
+		
+
+		
+		
+case WM_PAINT:
+			/*update room temp*/
+      sprintf(dispstr,"%2.0f",ctldata_s.set1_s.rdb);
+			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
+			TEXT_SetText(hItem, dispstr);
+			
+			/*update condensor temp*/
+			sprintf(dispstr,"%2.0f",ctldata_s.cond_s.rdb);
+			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_2);
+			TEXT_SetText(hItem, dispstr);
+			
+			/*Show OR Hide COOL mode based on error status*/
+			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_2);
+			if(ctldata_s.bFrostErr){
+					WM_HideWindow(hItem);			
+			}else{
+					WM_ShowWindow(hItem);
+			}
+			
+			/*Push the dbglog out*/
+			if(strlen(dbglog)>0 && GUI_GetTime() < t_dbglog + 2000){
+					hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_4);
+					TEXT_SetText(hItem, dbglog);
+					memset(dbglog,0,sizeof(dbglog));
+			}else{
+					t_dbglog = GUI_GetTime();	
+			}
+			
+			
+			/*update progbar*/
+			hItem = WM_GetDialogItem(pMsg->hWin, ID_PROGBAR_0);
+			if(ctldata_s.ucWarmPcnt == 0u){
+					WM_HideWindow(hItem);			
+			}else{
+					WM_ShowWindow(hItem);			
+					PROGBAR_SetValue(hItem,(int)ctldata_s.ucWarmPcnt);
+			}
+			
+     break;
+
   default:
     WM_DefaultProc(pMsg);
     break;
@@ -818,10 +913,9 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
 */
 WM_HWIN CreateWindow(void);
 WM_HWIN CreateWindow(void) {
-  WM_HWIN hWin;
-
-  hWin = GUI_CreateDialogBox(_aDialogCreate, GUI_COUNTOF(_aDialogCreate), _cbDialog, WM_HBKWIN, 0, 0);
-  return hWin;
+  
+hWinSysStatus_hdl = GUI_CreateDialogBox(_aDialogCreate, GUI_COUNTOF(_aDialogCreate), _cbDialog, WM_HBKWIN, 0, 0);
+  return hWinSysStatus_hdl;
 }
 
 // USER START (Optionally insert additional public code)
