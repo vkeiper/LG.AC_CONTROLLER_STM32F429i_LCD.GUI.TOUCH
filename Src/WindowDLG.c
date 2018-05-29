@@ -643,7 +643,7 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
   { TEXT_CreateIndirect, "txtROOM", ID_TEXT_0, 13, 27, 107, 73, 0, 0x64, 0 },
   { TEXT_CreateIndirect, "txtLblRoom", ID_TEXT_1, 22, 8, 38, 20, 0, 0x64, 0 },
   { TEXT_CreateIndirect, "txtCOND", ID_TEXT_2, 8, 239, 99, 72, 0, 0x64, 0 },
-  { TEXT_CreateIndirect, "txtLblACOIL", ID_TEXT_3, 19, 215, 80, 20, 0, 0x64, 0 },
+  { TEXT_CreateIndirect, "txtLblACOIL", ID_TEXT_3, 19, 215, 120, 20, 0, 0x64, 0 },
   { RADIO_CreateIndirect, "radioMode", ID_RADIO_0, 150, 251, 64, 43, 0, 0x1402, 0 },
   { IMAGE_CreateIndirect, "Image", ID_IMAGE_0, 89, 131, 50, 50, 0, 0, 0 },
   { IMAGE_CreateIndirect, "Image", ID_IMAGE_1, 162, 132, 50, 50, 0, 0, 0 },
@@ -717,6 +717,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
   int          NCode;
   int          Id;
 	static uint32_t t_dbglog=0;
+	static uint8_t ucSfCnt=0;
 	
   // USER START (Optionally insert additional variables)
   // USER END
@@ -780,6 +781,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     //
     hItem = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_0);
     BUTTON_SetText(hItem, "Power");
+		WM_HideWindow(hItem);			/*vk, hide button I am not using it yet*/
 		
 		    hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_4);
     TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x000000FF));
@@ -866,12 +868,28 @@ case WM_PAINT:
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_2);
 			TEXT_SetText(hItem, dispstr);
 			
-			/*Show OR Hide COOL mode based on error status*/
+			/*update uptime*/
+			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_3);
+			TEXT_SetText(hItem,time_s.str);
+
+			/* A. Show OR Hide COOL mode based on AcCooling status*/
+			/* B. Show OR Blink COOL mode based on error status*/
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_2);
-			if(ctldata_s.bFrostErr){
-					WM_HideWindow(hItem);			
+			if(ctldata_s.bFrostErr || ctldata_s.bAcCooling == FALSE){
+					if((ctldata_s.bFrostErr && ucSfCnt<2) ||  ctldata_s.bAcCooling == FALSE) {
+							WM_HideWindow(hItem);			
+					}else if(ctldata_s.bFrostErr && ucSfCnt>1){
+							WM_ShowWindow(hItem);
+					}
+					/*reseed blinker var*/
+					if(ucSfCnt<2){
+						ucSfCnt++;
+					}else{
+						ucSfCnt=0;
+					}
 			}else{
 					WM_ShowWindow(hItem);
+					ucSfCnt=0;
 			}
 			
 			/*Push the dbglog out*/
@@ -892,6 +910,8 @@ case WM_PAINT:
 					WM_ShowWindow(hItem);			
 					PROGBAR_SetValue(hItem,(int)ctldata_s.ucWarmPcnt);
 			}
+			
+			
 			
      break;
 

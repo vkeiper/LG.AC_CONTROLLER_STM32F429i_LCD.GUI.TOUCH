@@ -16,6 +16,7 @@
 #include "10kntc.h"
 #include "adc.h"
 #include "ir_rmt_txr.h"
+#include <string.h>
 
 //#define DBGFROST1
 //#define DBGFROST2
@@ -26,7 +27,8 @@
 //#define DBGTSTAT1
 //#define DBGTSTAT2
 //#define DBGTSTAT3
-//#define DBGACSTATE1
+//#define DBGCALCUPTIM1
+
 
 static bool FrostCheck(void);
 bool bWarmedUp(float val,float rng);
@@ -53,11 +55,13 @@ void DoHvacSimpleMode(void)
 	
 	if(GetTick() > t_run +2000){
 			t_run = GetTick();
+			
+			/*Test for imminent frost*/
 			if(FrostCheck() && t_retry ==0){
 				  bModeCool = FALSE;
 				  BSP_LED_On(LED4);/*set FROST ERR LED*/
 				  t_retry = GetTick();
-					// change to fan only mode so compressor shuts off
+					// change to power mode so compressor shuts off
 				  // this allows frost to melt
 				  ctldata_s.bModeChg = 1;
 
@@ -93,7 +97,17 @@ void DoHvacSimpleMode(void)
 #endif
 							}						
 					}		
-			}		
+			}	//end if frost block
+
+			/*glean AC cooling state based on delta between condensor temp & room*/
+			if(ctldata_s.set1_s.rdb - ctldata_s.cond_s.rdb >3 &&
+				ctldata_s.set1_s.rdb < 70)
+			{
+					ctldata_s.bAcCooling = TRUE;
+				
+			}else{
+				  ctldata_s.bAcCooling = FALSE;
+			}
 	}
 }
 
@@ -130,7 +144,7 @@ static bool FrostCheck(void)
   
   if( ctldata_s.cond_s.rdb <32 ){
 #ifdef DBGFROST3
-        sprintf(dbglog,"FROST EMINENT %d",cnt);
+		sprintf(dbglog,"FROST IMMINENT Count:%d",cnt);
 #endif
 		if(cnt++>=5){
 			cnt=0;
@@ -147,7 +161,7 @@ static bool FrostCheck(void)
 				if(cnt==0){
 					ctldata_s.bFrostErr = (bWarmedUp(ctldata_s.cond_s.rdb,ctldata_s.cond_s.rnghi) == TRUE ? FALSE : TRUE );
 #ifdef DBGFROST6
-					sprintf(dbglog,"NO FROST count%d",cnt);
+					sprintf(dbglog,"NO FROST Count:%d",cnt);
 #endif
 				}
     }
@@ -339,8 +353,9 @@ void calc_uptime(uint32_t time)
 	time_s.tm_days = time;
 
 	sprintf(time_s.str, "Dd:Hh:Mm:Ss %2d:%2d:%2d:%2d", time_s.tm_days, time_s.tm_hrs, time_s.tm_mins, time_s.tm_secs);
+	
 #ifdef DBGCALCUPTIM1
-	LCD_LOG_SetFooter((uint8_t*)&time_s.str);
+	memcpy(dbglog,time_s.str,25);
 #endif
 }
 

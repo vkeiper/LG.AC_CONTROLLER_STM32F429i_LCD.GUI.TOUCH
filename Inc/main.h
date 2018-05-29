@@ -63,15 +63,16 @@
 #define YERVER 18u
 #define MONVER 05u
 #define DAYVER 28u
-#define HRSVER 20u
-#define MNSVER 42u
+#define HRSVER 23u
+#define MNSVER 35u
 #define APPNUM "2018_A021"
 #define APPNAME "LG AC Controller\IR emulator w/ autodefrost"
 #define AUTHRFULL "Vince Keiper"
 #define AUTHRABR "V.K. "
 
-
-
+//v0.0.2  1805282335  1. Addded AcCooling sensing based on delta between condensor and room temps.
+//                    2. Added hide of snowflake if not AcCooling (already hid if FrostError 
+//                    3. Added uptime count to overwrite condensor temp label. Until I have a better place
 
 #define AIN_TEMP_ROOM_Pin GPIO_PIN_6
 #define AIN_TEMP_ROOM_GPIO_Port GPIOF
