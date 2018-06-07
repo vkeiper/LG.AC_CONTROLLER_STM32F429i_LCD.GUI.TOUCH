@@ -645,9 +645,9 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
   { TEXT_CreateIndirect, "txtCOND", ID_TEXT_2, 8, 239, 99, 72, 0, 0x64, 0 },
   { TEXT_CreateIndirect, "txtLblACOIL", ID_TEXT_3, 19, 215, 120, 20, 0, 0x64, 0 },
   { RADIO_CreateIndirect, "radioMode", ID_RADIO_0, 150, 251, 64, 43, 0, 0x1402, 0 },
-  { IMAGE_CreateIndirect, "Image", ID_IMAGE_0, 89, 131, 50, 50, 0, 0, 0 },
-  { IMAGE_CreateIndirect, "Image", ID_IMAGE_1, 162, 132, 50, 50, 0, 0, 0 },
-  { IMAGE_CreateIndirect, "Image", ID_IMAGE_2, 17, 130, 50, 50, 0, 0, 0 },
+  { IMAGE_CreateIndirect, "Img_snow", ID_IMAGE_0, 89, 131, 50, 50, 0, 0, 0 },
+  { IMAGE_CreateIndirect, "Img_fan", ID_IMAGE_1, 162, 132, 50, 50, 0, 0, 0 },
+  { IMAGE_CreateIndirect, "Img_pwr", ID_IMAGE_2, 17, 130, 50, 50, 0, 0, 0 },
   { BUTTON_CreateIndirect, "btnPwr", ID_BUTTON_0, 146, 34, 50, 50, 0, 0x0, 0 },
   { TEXT_CreateIndirect, "txtDbg", ID_TEXT_4, 3, 299, 232, 20, 0, 0x64, 0 },
   { PROGBAR_CreateIndirect, "prgWarmup", ID_PROGBAR_0, 208, 216, 20, 80, 1, 0x0, 0 },
@@ -874,7 +874,7 @@ case WM_PAINT:
 
 			/* A. Show OR Hide COOL mode based on AcCooling status*/
 			/* B. Show OR Blink COOL mode based on error status*/
-			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_2);
+			hItem = WM_GetDialogItem(pMsg->hWin, ID_IMAGE_0);
 			if(ctldata_s.bFrostErr || ctldata_s.bAcCooling == FALSE){
 					if((ctldata_s.bFrostErr && ucSfCnt<2) ||  ctldata_s.bAcCooling == FALSE) {
 							WM_HideWindow(hItem);			

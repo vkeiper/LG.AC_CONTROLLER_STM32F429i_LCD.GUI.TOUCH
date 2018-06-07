@@ -82,16 +82,16 @@ void DoHvacSimpleMode(void)
 					}/* we are in frost error or awaiting retry timer to expire */
 					else{
 						  /* We are not in frost error */
-							/* 3 minute tiemout 1000mS * 60sec/min * 3min */
-						  if(ctldata_s.cond_s.rdb >=32 &&
-											(t_retry !=0 && (GetTick() < t_retry +  (1000*60*3)))){
+							/* 6 minute tiemout 1000mS * 60sec/min * 3min */
+						  if(ctldata_s.cond_s.rdb >= 38.00 &&
+											(t_retry !=0 && (GetTick() < t_retry +  (1000*60*6)))){
 										/*AC set point is 65 and no fault */
 									  BSP_LED_Toggle(LED4);/*toggle during count down to CLEAR Fault LED*/
 #ifdef DBGFROST5
 										sprintf(&dbglog[0],"Warm-Up Period %d Secs remaining Left\n",
-												(((t_retry +  (1000*60*3))-GetTick())/1000));
+												(((t_retry +  (1000*60*6))-GetTick())/1000));
 												// time left  = tick_frst + 180,000  - ticknow  /180000
-												float tms  = ((t_retry +  (1000*60*3))-GetTick());
+												float tms  = ((t_retry +  (1000*60*6))-GetTick());
 										    tms = ((float)tms/180000.0)*100.0;
 												ctldata_s.ucWarmPcnt = (uint8_t)tms;
 #endif
@@ -100,8 +100,8 @@ void DoHvacSimpleMode(void)
 			}	//end if frost block
 
 			/*glean AC cooling state based on delta between condensor temp & room*/
-			if(ctldata_s.set1_s.rdb - ctldata_s.cond_s.rdb >3 &&
-				ctldata_s.set1_s.rdb < 70)
+			if((ctldata_s.set1_s.rdb - ctldata_s.cond_s.rdb) > 3.0 &&
+				ctldata_s.set1_s.rdb <= 70.00)
 			{
 					ctldata_s.bAcCooling = TRUE;
 				
@@ -142,7 +142,7 @@ static bool FrostCheck(void)
 		LCD_LOG_SetHeader((uint8_t*)&dbgstr);
 #endif    
   
-  if( ctldata_s.cond_s.rdb <32 ){
+  if( ctldata_s.cond_s.rdb <= 38.00 ){
 #ifdef DBGFROST3
 		sprintf(dbglog,"FROST IMMINENT Count:%d",cnt);
 #endif
