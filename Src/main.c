@@ -132,14 +132,14 @@ int main(void)
 			/* Run HVAC control\monitoring\auto-defrost */
 			DoHvacSimpleMode();
 		
-			/* Transmit IR Remote commands is requested                   */
+			/* Transmit IR Remote command has been requested              */
 			/* Mode change method async of the DoHvac...                  */
 			/* Mode change register is set in DoHvac with qty tx's needed */
 			if(t_txmode ==0 && ctldata_s.bModeChg >0){
 					t_txmode = HAL_GetTick();
 					ctldata_s.bModeChg--;	
 			}
-			/* Trigger Mode button press ever 200mS if timer has been set above */
+			/* Trigger Mode button press event 200mS after the timer has been set above */
 			if(t_txmode !=0 && (HAL_GetTick() > t_txmode + 200)){
 					SendFrame(BTN_PWR);
 				  sprintf(dbglog,"Sent Power ON-OFF");

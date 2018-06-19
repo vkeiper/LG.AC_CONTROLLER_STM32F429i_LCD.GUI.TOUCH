@@ -29,6 +29,7 @@
 //#define DBGTSTAT3
 //#define DBGCALCUPTIM1
 
+#define WARMUPSECONDS (1000*60*1)
 
 static bool FrostCheck(void);
 bool bWarmedUp(float val,float rng);
@@ -46,7 +47,6 @@ enum E_ACSTATE{
 struct s_control ctldata_s;
 struct s_timetype time_s;
 char dbgstr[64];
-
 
 void DoHvacSimpleMode(void)
 {
@@ -68,10 +68,11 @@ void DoHvacSimpleMode(void)
 			}else{
 				  /* Not in frost error & waiting to turn back on due to a previous frost error*/ 
 				  /* 3 minute tiemout 1000mS * 60sec/min * 3min */
-				  if(t_retry ==0 || GetTick() > t_retry +  (1000*60*3)){
+				  if(t_retry ==0 || GetTick() > t_retry +  WARMUPSECONDS){
 						    t_retry =0;/*clear to allow for immediate reseed*/
 								if(!bModeCool){
 									  bModeCool = TRUE;
+									  ctldata_s.bFrostErr = FALSE;
 									  /* change to cool mode after timeout, there are 4 modes so 2 switches  */
 										ctldata_s.bModeChg = 1;
 
@@ -83,28 +84,34 @@ void DoHvacSimpleMode(void)
 					else{
 						  /* We are not in frost error */
 							/* 6 minute tiemout 1000mS * 60sec/min * 3min */
-						  if(ctldata_s.cond_s.rdb >= 38.00 &&
-											(t_retry !=0 && (GetTick() < t_retry +  (1000*60*6)))){
+						  if(ctldata_s.cond_s.rdb >= 45.00 &&
+											(t_retry !=0 && (GetTick() < t_retry +  WARMUPSECONDS))){
 										/*AC set point is 65 and no fault */
 									  BSP_LED_Toggle(LED4);/*toggle during count down to CLEAR Fault LED*/
 #ifdef DBGFROST5
 										sprintf(&dbglog[0],"Warm-Up Period %d Secs remaining Left\n",
-												(((t_retry +  (1000*60*6))-GetTick())/1000));
+												(((t_retry +  WARMUPSECONDS)-GetTick())/1000));
 												// time left  = tick_frst + 180,000  - ticknow  /180000
-												float tms  = ((t_retry +  (1000*60*6))-GetTick());
-										    tms = ((float)tms/180000.0)*100.0;
+												float tms  = ((t_retry +  WARMUPSECONDS)-GetTick());
+										    tms = ((float)tms/WARMUPSECONDS)*100.0;
 												ctldata_s.ucWarmPcnt = (uint8_t)tms;
 #endif
-							}						
+							}else{
+									
+							}								
 					}		
 			}	//end if frost block
 
-			/*glean AC cooling state based on delta between condensor temp & room*/
-			if((ctldata_s.set1_s.rdb - ctldata_s.cond_s.rdb) > 3.0 &&
-				ctldata_s.set1_s.rdb <= 70.00)
+			/*glean AC cooling state based on LED monitor (photocell) glued to it*/
+			if(bModeCool == TRUE && HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_SET)
+			{
+				  /* change to cool mode after timeout, there are 4 modes so 2 switches  */
+					ctldata_s.bModeChg = 1;
+			}
+			
+			if(HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET)
 			{
 					ctldata_s.bAcCooling = TRUE;
-				
 			}else{
 				  ctldata_s.bAcCooling = FALSE;
 			}
@@ -142,15 +149,17 @@ static bool FrostCheck(void)
 		LCD_LOG_SetHeader((uint8_t*)&dbgstr);
 #endif    
   
-  if( ctldata_s.cond_s.rdb <= 38.00 ){
-#ifdef DBGFROST3
-		sprintf(dbglog,"FROST IMMINENT Count:%d",cnt);
-#endif
-		if(cnt++>=5){
-			cnt=0;
-			ctldata_s.bFrostErr = TRUE;
-		}
+  if( ctldata_s.cond_s.rdb <= 45.00 ){
+		if(ctldata_s.bFrostErr == FALSE){
 		
+#ifdef DBGFROST3
+			sprintf(dbglog,"FROST IMMINENT Count:%d",cnt);
+#endif
+			if(cnt++>=5){
+				cnt=0;
+				ctldata_s.bFrostErr = TRUE;
+			}
+		}
   }else{
     //If we were in Frost Fault call to test for 
     if(ctldata_s.bFrostErr == TRUE){
@@ -159,7 +168,7 @@ static bool FrostCheck(void)
 						cnt--;
 				/*test fault count for clear*/
 				if(cnt==0){
-					ctldata_s.bFrostErr = (bWarmedUp(ctldata_s.cond_s.rdb,ctldata_s.cond_s.rnghi) == TRUE ? FALSE : TRUE );
+					//ctldata_s.bFrostErr = FALSE;//(bWarmedUp(ctldata_s.cond_s.rdb,ctldata_s.cond_s.rnghi) == TRUE ? FALSE : TRUE );
 #ifdef DBGFROST6
 					sprintf(dbglog,"NO FROST Count:%d",cnt);
 #endif
@@ -177,7 +186,7 @@ bool bWarmedUp(float val,float rng)
 {
    bool retval = FALSE;
    //build in hysterisis for turn back on
-    if( val >rng){
+    if( val >=rng){
         retval = TRUE;
 #ifdef DBGFROST7
         LCD_UsrLog("No Frost >HYST");
@@ -199,7 +208,7 @@ void SetAcState(void)
 
     //-- read tstat demand for tstat demanded cool state
     if (HAL_GPIO_ReadPin(DI_DMD_GPIO_Port,DI_DMD_Pin) == GPIO_PIN_RESET && 
-			HAL_GPIO_ReadPin(DI_MANMODE_GPIO_Port,DI_MANMODE_Pin) == GPIO_PIN_RESET)
+			HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET)
     
     {
       ctldata_s.bTstatCoolDmd = TRUE;

@@ -80,8 +80,8 @@
 #define AIN_TEMP_ACOIL_GPIO_Port GPIOA
 
 
-#define DI_MANMODE_Pin GPIO_PIN_2
-#define DI_MANMODE_GPIO_Port GPIOE
+#define DI_ACMODELED_Pin GPIO_PIN_2
+#define DI_ACMODELED_GPIO_Port GPIOE
 #define DI_DMD_Pin GPIO_PIN_3
 #define DI_DMD_GPIO_Port GPIOE
 #define DO_MAINS_SSR_Pin GPIO_PIN_4

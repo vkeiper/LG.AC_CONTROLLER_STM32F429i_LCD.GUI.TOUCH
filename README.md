@@ -1,6 +1,6 @@
 # LG.AC_CONTROLLER_STM32F429i_LCD.GUI.TOUCH
 Controls an LG AC unit over IR using an STM32F429i Discovery board with 2.4" LCD display for the UI and w/ touch screen for local control. The IR commands were reverse engineered from the original LG remote control. 
-
+//test 6/19/18
 
 I created the dialog screen for the HVAC default status and control view.
 I just merged the IR Remote code, ADC\NTC routines and the main DoHvacSimple() from the doner project where I developed the IR remote emulator.
@@ -11,7 +11,7 @@ Then I will add a TCP and web server and add the ethernet hardware.
 Or I may use my ESP32 project and just shrink the scope of that to be a Wifi to UART gateway.
 
 
-README!!!!!
+
 Until I move all the STCube related files into the project folder the project must run from the following folder.
 C:\Users\keipe_v\Documents\TDI\firmware\STM32F4\STM32Cube_FW_F4_V1.16.0\Projects\STM32F429I-Discovery\Applications\STemWin
  

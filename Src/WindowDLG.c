@@ -867,29 +867,31 @@ case WM_PAINT:
 			sprintf(dispstr,"%2.0f",ctldata_s.cond_s.rdb);
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_2);
 			TEXT_SetText(hItem, dispstr);
+			if(ctldata_s.bFrostErr == FALSE){
+					TEXT_SetTextColor(hItem,GUI_GREEN);
+			}else{
+					TEXT_SetTextColor(hItem,GUI_RED);
+			}
 			
 			/*update uptime*/
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_3);
 			TEXT_SetText(hItem,time_s.str);
 
 			/* A. Show OR Hide COOL mode based on AcCooling status*/
-			/* B. Show OR Blink COOL mode based on error status*/
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_IMAGE_0);
-			if(ctldata_s.bFrostErr || ctldata_s.bAcCooling == FALSE){
-					if((ctldata_s.bFrostErr && ucSfCnt<2) ||  ctldata_s.bAcCooling == FALSE) {
+			if(ctldata_s.bAcCooling == FALSE){
 							WM_HideWindow(hItem);			
-					}else if(ctldata_s.bFrostErr && ucSfCnt>1){
-							WM_ShowWindow(hItem);
-					}
-					/*reseed blinker var*/
-					if(ucSfCnt<2){
-						ucSfCnt++;
-					}else{
-						ucSfCnt=0;
-					}
 			}else{
 					WM_ShowWindow(hItem);
 					ucSfCnt=0;
+			}
+			
+			/* A. Show OR Hide FAN mode based on bFrostErr status*/
+			hItem = WM_GetDialogItem(pMsg->hWin, ID_IMAGE_1);
+			if(ctldata_s.bFrostErr == FALSE){
+					WM_ShowWindow(hItem);
+			}else{
+				  WM_HideWindow(hItem);
 			}
 			
 			/*Push the dbglog out*/
@@ -904,7 +906,7 @@ case WM_PAINT:
 			
 			/*update progbar*/
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_PROGBAR_0);
-			if(ctldata_s.ucWarmPcnt == 0u){
+			if(ctldata_s.ucWarmPcnt < 5u){
 					WM_HideWindow(hItem);			
 			}else{
 					WM_ShowWindow(hItem);			

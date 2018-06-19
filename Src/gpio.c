@@ -77,7 +77,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(DO_IRLED_GPIO_Port, DO_IRLED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PEPin PEPin */
-  GPIO_InitStruct.Pin = DI_MANMODE_Pin|DI_DMD_Pin;
+  GPIO_InitStruct.Pin = DI_ACMODELED_Pin|DI_DMD_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
