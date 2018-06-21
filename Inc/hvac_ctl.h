@@ -18,6 +18,10 @@
 #define GetTick() HAL_GetTick()
 
 
+enum E_FROSTCHK{
+  EFROSTCHK_PASS,
+  EFROSTCHK_FAIL,
+};
 
 
 struct s_timetype {
@@ -67,6 +71,7 @@ struct s_control{
   bool bHtHeating;//not implemented yet
   bool bAuxFan;
   bool bEvappump;
+	bool bFrostCheck;
   bool bFrostErr;
   bool bTstatCoolDmd;
   struct s_setpt set1_s;
@@ -76,6 +81,7 @@ struct s_control{
 	int8_t vrefint;
 	uint8_t bModeChg;
 	uint8_t ucWarmPcnt;
+	bool bModeCool;
 };
 
 extern struct s_control ctldata_s;

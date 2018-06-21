@@ -693,7 +693,7 @@ static void _cbWin(WM_MESSAGE * pMsg) {
 		/*
 		... restart timer and invalidate window to update widgets ...
 		*/
-		WM_RestartTimer(hNewTimer, 400);
+		WM_RestartTimer(hNewTimer, 100);
 		if (WM_IsWindow(hWinSysStatus_hdl))
 		{
         WM_Invalidate(hWinSysStatus_hdl);
@@ -717,7 +717,8 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
   int          NCode;
   int          Id;
 	static uint32_t t_dbglog=0;
-	static uint8_t ucSfCnt=0;
+	static uint32_t t_blinkSF=0,t_blinkPB;
+	static bool bTogSF,bTogPB;
 	
   // USER START (Optionally insert additional variables)
   // USER END
@@ -735,7 +736,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     // Initialization of 'txtLblRoom'
     //
     hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_1);
-    TEXT_SetText(hItem, "MSTR");
+    TEXT_SetText(hItem, "ROOM");
     TEXT_SetFont(hItem, GUI_FONT_13_1);
     //
     // Initialization of 'txtCOND'
@@ -845,7 +846,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       switch(NCode) {
       case WM_NOTIFICATION_CLICKED:
 				/*trigger power on\off command to be sent over IRLED*/
-        ctldata_s.bModeChg =1;
+       
 			break;
       }
 		break;
@@ -873,40 +874,62 @@ case WM_PAINT:
 					TEXT_SetTextColor(hItem,GUI_RED);
 			}
 			
-			/*update uptime*/
-			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_3);
-			TEXT_SetText(hItem,time_s.str);
-
-			/* A. Show OR Hide COOL mode based on AcCooling status*/
+			
+			/* Show OR Blink COOL mode based on AcCooling status*/
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_IMAGE_0);
-			if(ctldata_s.bAcCooling == FALSE){
-							WM_HideWindow(hItem);			
+			if(ctldata_s.bAcCooling == TRUE){
+							WM_ShowWindow(hItem);			
 			}else{
-					WM_ShowWindow(hItem);
-					ucSfCnt=0;
-			}
+					/* Blink Snow Flake */
+				if((t_blinkSF + 500) < GUI_GetTime()){
+						t_blinkSF = GUI_GetTime();
+					  if(bTogSF){
+							bTogSF = FALSE;
+							WM_ShowWindow(hItem);
+						}else{
+							bTogSF = TRUE;
+							WM_HideWindow(hItem);
+						}
+				}
+			}		
 			
-			/* A. Show OR Hide FAN mode based on bFrostErr status*/
-			hItem = WM_GetDialogItem(pMsg->hWin, ID_IMAGE_1);
+			
+			/* Show OR Blink Power Buuton IMG based on bFrostErr status*/
+			hItem = WM_GetDialogItem(pMsg->hWin, ID_IMAGE_2);
 			if(ctldata_s.bFrostErr == FALSE){
-					WM_ShowWindow(hItem);
+							WM_ShowWindow(hItem);			
 			}else{
-				  WM_HideWindow(hItem);
+					/* Blink Power Button */
+				if((t_blinkPB + 500) < GUI_GetTime()){
+						t_blinkPB = GUI_GetTime();
+					  if(bTogPB){
+							bTogPB = FALSE;
+							WM_ShowWindow(hItem);
+						}else{
+							bTogPB = TRUE;
+							WM_HideWindow(hItem);
+						}
+				}
 			}
 			
-			/*Push the dbglog out*/
-			if(strlen(dbglog)>0 && GUI_GetTime() < t_dbglog + 2000){
+			/*Once per second Push the dbglog out if lgo info, else update UPTIME*/
+			if((t_dbglog + 1000) < GUI_GetTime()){
+					t_dbglog = GUI_GetTime();
 					hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_4);
-					TEXT_SetText(hItem, dbglog);
-					memset(dbglog,0,sizeof(dbglog));
-			}else{
-					t_dbglog = GUI_GetTime();	
+					if(strlen(dbglog)>0){
+						TEXT_SetTextColor(hItem, GUI_RED);
+						TEXT_SetText(hItem, dbglog);
+						memset(dbglog,0,sizeof(dbglog));
+					}else{
+							/*update uptime*/
+							TEXT_SetTextColor(hItem, GUI_BLACK);
+							TEXT_SetText(hItem,time_s.str);
+					}
 			}
-			
 			
 			/*update progbar*/
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_PROGBAR_0);
-			if(ctldata_s.ucWarmPcnt < 5u){
+			if(ctldata_s.ucWarmPcnt < 5u || ctldata_s.bFrostCheck ){
 					WM_HideWindow(hItem);			
 			}else{
 					WM_ShowWindow(hItem);			

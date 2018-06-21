@@ -30,6 +30,7 @@
 //#define DBGCALCUPTIM1
 
 #define WARMUPSECONDS (1000*60*1)
+#define FROSTTEMP (45.00)
 
 static bool FrostCheck(void);
 bool bWarmedUp(float val,float rng);
@@ -51,14 +52,13 @@ char dbgstr[64];
 void DoHvacSimpleMode(void)
 {
 	static uint32_t t_run,t_retry=0; 
-	static bool bModeCool =TRUE;
-	
-	if(GetTick() > t_run +2000){
+		
+	if(GetTick() > t_run +100){
 			t_run = GetTick();
 			
 			/*Test for imminent frost*/
 			if(FrostCheck() && t_retry ==0){
-				  bModeCool = FALSE;
+				  ctldata_s.bModeCool = FALSE;
 				  BSP_LED_On(LED4);/*set FROST ERR LED*/
 				  t_retry = GetTick();
 					// change to power mode so compressor shuts off
@@ -67,11 +67,11 @@ void DoHvacSimpleMode(void)
 
 			}else{
 				  /* Not in frost error & waiting to turn back on due to a previous frost error*/ 
-				  /* 3 minute tiemout 1000mS * 60sec/min * 3min */
+				  /* X minute timeout 1000mS * 60sec/min * Xmin */
 				  if(t_retry ==0 || GetTick() > t_retry +  WARMUPSECONDS){
 						    t_retry =0;/*clear to allow for immediate reseed*/
-								if(!bModeCool){
-									  bModeCool = TRUE;
+								if(!ctldata_s.bModeCool){
+									  ctldata_s.bModeCool = TRUE;
 									  ctldata_s.bFrostErr = FALSE;
 									  /* change to cool mode after timeout, there are 4 modes so 2 switches  */
 										ctldata_s.bModeChg = 1;
@@ -84,7 +84,7 @@ void DoHvacSimpleMode(void)
 					else{
 						  /* We are not in frost error */
 							/* 6 minute tiemout 1000mS * 60sec/min * 3min */
-						  if(ctldata_s.cond_s.rdb >= 45.00 &&
+						  if(ctldata_s.cond_s.rdb >= (float)FROSTTEMP &&
 											(t_retry !=0 && (GetTick() < t_retry +  WARMUPSECONDS))){
 										/*AC set point is 65 and no fault */
 									  BSP_LED_Toggle(LED4);/*toggle during count down to CLEAR Fault LED*/
@@ -92,8 +92,8 @@ void DoHvacSimpleMode(void)
 										sprintf(&dbglog[0],"Warm-Up Period %d Secs remaining Left\n",
 												(((t_retry +  WARMUPSECONDS)-GetTick())/1000));
 												// time left  = tick_frst + 180,000  - ticknow  /180000
-												float tms  = ((t_retry +  WARMUPSECONDS)-GetTick());
-										    tms = ((float)tms/WARMUPSECONDS)*100.0;
+												float tms  = ((t_retry +  (float)WARMUPSECONDS)-GetTick());
+										    tms = ((float)tms/(float)WARMUPSECONDS)*(float)100.0;
 												ctldata_s.ucWarmPcnt = (uint8_t)tms;
 #endif
 							}else{
@@ -103,12 +103,13 @@ void DoHvacSimpleMode(void)
 			}	//end if frost block
 
 			/*glean AC cooling state based on LED monitor (photocell) glued to it*/
-			if(bModeCool == TRUE && HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_SET)
-			{
+			//if(ctldata_s.bModeCool == TRUE && HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_SET)
+			//{
 				  /* change to cool mode after timeout, there are 4 modes so 2 switches  */
-					ctldata_s.bModeChg = 1;
-			}
+					//ctldata_s.bModeChg = 1;
+			//}
 			
+			/* Read state of the AC MODE LED mounted on AC display */
 			if(HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET)
 			{
 					ctldata_s.bAcCooling = TRUE;
@@ -149,11 +150,11 @@ static bool FrostCheck(void)
 		LCD_LOG_SetHeader((uint8_t*)&dbgstr);
 #endif    
   
-  if( ctldata_s.cond_s.rdb <= 45.00 ){
+  if( ctldata_s.cond_s.rdb <= (float)FROSTTEMP ){
 		if(ctldata_s.bFrostErr == FALSE){
 		
 #ifdef DBGFROST3
-			sprintf(dbglog,"FROST IMMINENT Count:%d",cnt);
+			sprintf(dbglog,"FROST IMMINENT Count:%d Threshold%2.3f",cnt,FROSTTEMP);
 #endif
 			if(cnt++>=5){
 				cnt=0;

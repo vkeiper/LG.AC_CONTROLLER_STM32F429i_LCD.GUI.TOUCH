@@ -87,7 +87,7 @@ int main(void)
 {  
 	static uint32_t t_gui=0;
 	static uint32_t t_run=0, t_txmode=0;
-  
+  static uint32_t pwrtxcnt =0;
 	
   /* STM32F4xx HAL library initialization:
        - Configure the Flash prefetch, instruction and Data caches
@@ -135,15 +135,19 @@ int main(void)
 			/* Transmit IR Remote command has been requested              */
 			/* Mode change method async of the DoHvac...                  */
 			/* Mode change register is set in DoHvac with qty tx's needed */
-			if(t_txmode ==0 && ctldata_s.bModeChg >0){
-					t_txmode = HAL_GetTick();
-					ctldata_s.bModeChg--;	
-			}
-			/* Trigger Mode button press event 200mS after the timer has been set above */
-			if(t_txmode !=0 && (HAL_GetTick() > t_txmode + 200)){
-					SendFrame(BTN_PWR);
-				  sprintf(dbglog,"Sent Power ON-OFF");
-					t_txmode=0;
+			
+			if(t_txmode == 0){
+				/* If AC should be ON but is not trigger Mode button press event */
+				if(ctldata_s.bModeCool == TRUE && HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_SET){
+						t_txmode = HAL_GetTick();
+						SendFrame(BTN_PWR);
+						sprintf(dbglog,"Sent Power ON-OFF Cnt %d ACLED%s",++pwrtxcnt,HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET ? "AC ON" : "AC OFF");
+				}
+			}else{
+						/* Keep in this state for 500mS after PWR BTN command tx, stops AC ON\OFF from being checked */
+						if(t_txmode !=0 && (HAL_GetTick() > t_txmode + 500)){
+							t_txmode=0;
+						}
 			}
 			
 			
