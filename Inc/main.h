@@ -59,12 +59,12 @@
 
 #define MAJVER 0u
 #define MINVER 0u
-#define BLDVER 2u
+#define BLDVER 3u
 #define YERVER 18u
-#define MONVER 05u
-#define DAYVER 28u
-#define HRSVER 23u
-#define MNSVER 35u
+#define MONVER 06u
+#define DAYVER 21u
+#define HRSVER 16u
+#define MNSVER 49u
 #define APPNUM "2018_A021"
 #define APPNAME "LG AC Controller\IR emulator w/ autodefrost"
 #define AUTHRFULL "Vince Keiper"

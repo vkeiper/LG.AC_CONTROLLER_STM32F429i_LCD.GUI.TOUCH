@@ -88,6 +88,7 @@ int main(void)
 	static uint32_t t_gui=0;
 	static uint32_t t_run=0, t_txmode=0;
   static uint32_t pwrtxcnt =0;
+	static bool bSendPwr = FALSE;
 	
   /* STM32F4xx HAL library initialization:
        - Configure the Flash prefetch, instruction and Data caches
@@ -137,19 +138,30 @@ int main(void)
 			/* Mode change register is set in DoHvac with qty tx's needed */
 			
 			if(t_txmode == 0){
-				/* If AC should be ON but is not trigger Mode button press event */
-				if(ctldata_s.bModeCool == TRUE && HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_SET){
-						t_txmode = HAL_GetTick();
-						SendFrame(BTN_PWR);
-						sprintf(dbglog,"Sent Power ON-OFF Cnt %d ACLED%s",++pwrtxcnt,HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET ? "AC ON" : "AC OFF");
+				/* If AC should be ON but is OFF trigger Mode button press event */
+				if( ctldata_s.bModeCool == TRUE && HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_SET){
+						bSendPwr =TRUE;
+				  	sprintf(dbglog,"Sent Power ON Cnt %d bCool %d ACLED%s",++pwrtxcnt,ctldata_s.bModeCool,HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET ? "AC ON" : "AC OFF");
 				}
+				/* If AC should be OFF but is ON trigger Mode button press event */
+				else if( ctldata_s.bModeCool == FALSE && HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET){
+						bSendPwr = TRUE;
+						sprintf(dbglog,"Sent Power OFF Cnt %d bCool %d ACLED%s",++pwrtxcnt,ctldata_s.bModeCool,HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET ? "AC ON" : "AC OFF");
+				}
+										
 			}else{
-						/* Keep in this state for 500mS after PWR BTN command tx, stops AC ON\OFF from being checked */
-						if(t_txmode !=0 && (HAL_GetTick() > t_txmode + 500)){
+						/* Keep in this state for 5000 Seconds after PWR BTN command tx, stops AC ON\OFF from being checked */
+						if(t_txmode !=0 && (HAL_GetTick() > t_txmode + 5000)){
 							t_txmode=0;
 						}
 			}
 			
+			if(bSendPwr == TRUE){
+						bSendPwr = FALSE;
+						t_txmode = HAL_GetTick();
+						SendFrame(BTN_PWR);
+			}
+				
 			
 			/*Send PWR if button clicked*/
 			if(HAL_GetTick() > t_run + 1000){
@@ -159,8 +171,13 @@ int main(void)
 				
 				if(ubKeyPressed == SET){
 						SendFrame(BTN_PWR);
-			
 						ubKeyPressed = RESET;
+					
+						if(ctldata_s.dmdmode_e != EDMDMD_COOL){
+							ctldata_s.dmdmode_e =  EDMDMD_COOL;
+						}else{
+							ctldata_s.dmdmode_e =  EDMDMD_NONE;
+						}
 				}
 			}
 	}
@@ -231,7 +248,7 @@ static void BSP_Config(void)
 void BSP_Background(void)
 {
 	/*Toggle the HB led*/
-  BSP_LED_Toggle(LED3);
+  //BSP_LED_Toggle(LED3);
   
   /* Capture input event and update cursor */
   if(GUI_Initialized == 1)

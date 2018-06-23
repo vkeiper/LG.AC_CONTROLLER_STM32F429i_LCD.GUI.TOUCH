@@ -57,39 +57,38 @@ void DoHvacSimpleMode(void)
 			t_run = GetTick();
 			
 			/*Test for imminent frost*/
-			if(FrostCheck() && t_retry ==0){
-				  ctldata_s.bModeCool = FALSE;
-				  BSP_LED_On(LED4);/*set FROST ERR LED*/
-				  t_retry = GetTick();
-					// change to power mode so compressor shuts off
-				  // this allows frost to melt
-				  ctldata_s.bModeChg = 1;
-
-			}else{
+		  ctldata_s.bFrostCheck = FrostCheck();
+		
+		//state machine		
+		if(ctldata_s.bFrostCheck == TRUE){
+				if(t_retry ==0){
+						ctldata_s.bModeCool = FALSE;
+						BSP_LED_On(LED4);/*set FROST ERR LED*/
+				}	
+				t_retry = GetTick();	// reseed warmup period	
+			}			
+			else{
 				  /* Not in frost error & waiting to turn back on due to a previous frost error*/ 
 				  /* X minute timeout 1000mS * 60sec/min * Xmin */
 				  if(t_retry ==0 || GetTick() > t_retry +  WARMUPSECONDS){
 						    t_retry =0;/*clear to allow for immediate reseed*/
-								if(!ctldata_s.bModeCool){
+								if(ctldata_s.bModeCool == FALSE && ctldata_s.dmdmode_e == EDMDMD_COOL){
 									  ctldata_s.bModeCool = TRUE;
 									  ctldata_s.bFrostErr = FALSE;
-									  /* change to cool mode after timeout, there are 4 modes so 2 switches  */
-										ctldata_s.bModeChg = 1;
-
 								}else{
 									  /*AC set point is 65 and no fault */
 									  BSP_LED_Off(LED4);/*clear Fault LED*/
+										BSP_LED_Toggle(LED3);
 								}
 					}/* we are in frost error or awaiting retry timer to expire */
 					else{
 						  /* We are not in frost error */
 							/* 6 minute tiemout 1000mS * 60sec/min * 3min */
-						  if(ctldata_s.cond_s.rdb >= (float)FROSTTEMP &&
-											(t_retry !=0 && (GetTick() < t_retry +  WARMUPSECONDS))){
+						  if((t_retry !=0 && (GetTick() < t_retry +  WARMUPSECONDS))){
 										/*AC set point is 65 and no fault */
 									  BSP_LED_Toggle(LED4);/*toggle during count down to CLEAR Fault LED*/
 #ifdef DBGFROST5
-										sprintf(&dbglog[0],"Warm-Up Period %d Secs remaining Left\n",
+										sprintf(&dbglog[0],"Warm-Up Period %d Secs Remaining\n",
 												(((t_retry +  WARMUPSECONDS)-GetTick())/1000));
 												// time left  = tick_frst + 180,000  - ticknow  /180000
 												float tms  = ((t_retry +  (float)WARMUPSECONDS)-GetTick());
@@ -102,12 +101,6 @@ void DoHvacSimpleMode(void)
 					}		
 			}	//end if frost block
 
-			/*glean AC cooling state based on LED monitor (photocell) glued to it*/
-			//if(ctldata_s.bModeCool == TRUE && HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_SET)
-			//{
-				  /* change to cool mode after timeout, there are 4 modes so 2 switches  */
-					//ctldata_s.bModeChg = 1;
-			//}
 			
 			/* Read state of the AC MODE LED mounted on AC display */
 			if(HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET)
@@ -115,7 +108,7 @@ void DoHvacSimpleMode(void)
 					ctldata_s.bAcCooling = TRUE;
 			}else{
 				  ctldata_s.bAcCooling = FALSE;
-			}
+			}		
 	}
 }
 
@@ -124,6 +117,8 @@ void DoHvacSimpleMode(void)
 static bool FrostCheck(void)
 {  
 		static uint8_t cnt=0; 
+	  static bool retval = FALSE,lastfrost;
+	  bool frost;
 			
     ctldata_s.cond_s.rdbraw = GetAdcConversion(hadc1);/*condensor temp*/
 		ctldata_s.set1_s.rdbraw  = GetAdcConversion(hadc3);/*room air*/
@@ -149,36 +144,44 @@ static bool FrostCheck(void)
             ctldata_s.set1_s.rdb,ctldata_s.cond_s.rdb );
 		LCD_LOG_SetHeader((uint8_t*)&dbgstr);
 #endif    
-  
-  if( ctldata_s.cond_s.rdb <= (float)FROSTTEMP ){
-		if(ctldata_s.bFrostErr == FALSE){
+			
 		
+  if( ctldata_s.cond_s.rdb <= (float)FROSTTEMP ){
+			frost = TRUE;
 #ifdef DBGFROST3
-			sprintf(dbglog,"FROST IMMINENT Count:%d Threshold%2.3f",cnt,FROSTTEMP);
+			sprintf(dbglog,"FROST IMMINENT Count:%d Level %2.3f",cnt,FROSTTEMP);
 #endif
-			if(cnt++>=5){
-				cnt=0;
-				ctldata_s.bFrostErr = TRUE;
+			
+			if(cnt){
+					cnt--;
+					/*test fault count for clear*/
+					if(cnt==0){
+						ctldata_s.bFrostErr = TRUE;
+						retval = TRUE;
+					}
 			}
-		}
   }else{
-    //If we were in Frost Fault call to test for 
-    if(ctldata_s.bFrostErr == TRUE){
-				/*decrement fault count*/
-				if(cnt)
+				frost = FALSE;
+    		/*decrement fault count*/
+				if(cnt){
 						cnt--;
-				/*test fault count for clear*/
-				if(cnt==0){
-					//ctldata_s.bFrostErr = FALSE;//(bWarmedUp(ctldata_s.cond_s.rdb,ctldata_s.cond_s.rnghi) == TRUE ? FALSE : TRUE );
+						/*test fault count for clear*/
+						if(cnt==0){
+								retval = FALSE;	
 #ifdef DBGFROST6
-					sprintf(dbglog,"NO FROST Count:%d",cnt);
+							sprintf(dbglog,"NO FROST Count:%d",cnt);
 #endif
-				}
-    }
-    
+					}
+			}    
   }
 	
-	return ctldata_s.bFrostErr;
+	//reseed event counter upon state change
+	if(lastfrost != frost){
+			cnt =5;
+	}
+	lastfrost = frost;
+	
+	return retval;
 }
 
 

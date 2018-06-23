@@ -640,7 +640,7 @@ static const U8 _acImage_2[7654] = {
 */
 static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
   { WINDOW_CreateIndirect, "Window", ID_WINDOW_0, 0, 0, 240, 320, 0, 0x0, 0 },
-  { TEXT_CreateIndirect, "txtROOM", ID_TEXT_0, 13, 27, 107, 73, 0, 0x64, 0 },
+  { TEXT_CreateIndirect, "txtROOM", ID_TEXT_0, 13, 27, 200, 73, 0, 0x64, 0 },
   { TEXT_CreateIndirect, "txtLblRoom", ID_TEXT_1, 22, 8, 38, 20, 0, 0x64, 0 },
   { TEXT_CreateIndirect, "txtCOND", ID_TEXT_2, 8, 239, 99, 72, 0, 0x64, 0 },
   { TEXT_CreateIndirect, "txtLblACOIL", ID_TEXT_3, 19, 215, 120, 20, 0, 0x64, 0 },
@@ -717,8 +717,8 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
   int          NCode;
   int          Id;
 	static uint32_t t_dbglog=0;
-	static uint32_t t_blinkSF=0,t_blinkPB;
-	static bool bTogSF,bTogPB;
+	static uint32_t t_blinkSF=0,t_blinkPB,t_blinkFan;
+	static bool bTogSF,bTogPB,bTogFan;
 	
   // USER START (Optionally insert additional variables)
   // USER END
@@ -736,7 +736,9 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     // Initialization of 'txtLblRoom'
     //
     hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_1);
-    TEXT_SetText(hItem, "ROOM");
+	  sprintf(dbglog,"ROOM         App v%d.%d.%d %d-%d-%d %d:%d", MAJVER,MINVER,BLDVER,YERVER,MONVER,DAYVER,HRSVER,MNSVER);
+    TEXT_SetText(hItem, dbglog);
+
     TEXT_SetFont(hItem, GUI_FONT_13_1);
     //
     // Initialization of 'txtCOND'
@@ -803,7 +805,22 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     Id    = WM_GetId(pMsg->hWinSrc);
     NCode = pMsg->Data.v;
     switch(Id) {
-    case ID_RADIO_0: // Notifications sent by 'radioMode'
+    case ID_TEXT_0: // Notifications sent by 'text_ID0'
+      switch(NCode) {
+      case WM_NOTIFICATION_CLICKED:
+        // USER START (Optionally insert code for reacting on notification message)
+				ctldata_s.set1_s.dmd = ctldata_s.set1_s.dmd +1.00;
+			  if(ctldata_s.set1_s.dmd >= 72.00){
+					ctldata_s.set1_s.dmd = 55.00;
+				}
+        // USER END
+        break;
+      // USER START (Optionally insert additional code for further notification handling)
+      // USER END
+      }
+      break;
+			
+			case ID_RADIO_0: // Notifications sent by 'radioMode'
       switch(NCode) {
       case WM_NOTIFICATION_CLICKED:
         // USER START (Optionally insert code for reacting on notification message)
@@ -869,7 +886,7 @@ case WM_PAINT:
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_2);
 			TEXT_SetText(hItem, dispstr);
 			if(ctldata_s.bFrostErr == FALSE){
-					TEXT_SetTextColor(hItem,GUI_GREEN);
+					TEXT_SetTextColor(hItem,GUI_DARKGREEN);
 			}else{
 					TEXT_SetTextColor(hItem,GUI_RED);
 			}
@@ -894,12 +911,12 @@ case WM_PAINT:
 			}		
 			
 			
-			/* Show OR Blink Power Buuton IMG based on bFrostErr status*/
+			/* Show OR Blink Power Button IMG based on bFrostErr status*/
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_IMAGE_2);
 			if(ctldata_s.bFrostErr == FALSE){
 							WM_ShowWindow(hItem);			
 			}else{
-					/* Blink Power Button */
+					/* Blink IMG */
 				if((t_blinkPB + 500) < GUI_GetTime()){
 						t_blinkPB = GUI_GetTime();
 					  if(bTogPB){
@@ -907,6 +924,24 @@ case WM_PAINT:
 							WM_ShowWindow(hItem);
 						}else{
 							bTogPB = TRUE;
+							WM_HideWindow(hItem);
+						}
+				}
+			}
+			
+			/* Show OR Blink Fan IMG based on bModeCool status*/
+			hItem = WM_GetDialogItem(pMsg->hWin, ID_IMAGE_1);
+			if(ctldata_s.dmdmode_e == EDMDMD_COOL){
+							WM_ShowWindow(hItem);			
+			}else{
+					/* Blink IMG */
+				if((t_blinkFan + 500) < GUI_GetTime()){
+						t_blinkFan = GUI_GetTime();
+					  if(bTogFan){
+							bTogFan = FALSE;
+							WM_ShowWindow(hItem);
+						}else{
+							bTogFan = TRUE;
 							WM_HideWindow(hItem);
 						}
 				}
