@@ -42,11 +42,9 @@
 #include "ir_rmt_txr.h"
 #include "main.h"
 
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 
 
 /* TIM1 init function */
@@ -150,7 +148,19 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* tim_baseHandle)
 			
 			/* Enable the TIMx global Interrupt */
 			HAL_NVIC_EnableIRQ(TIM3_IRQn);
-	}
+	}else if(tim_baseHandle->Instance==TIM4)
+  {
+    /* Peripheral clock enable */
+    __TIM4_CLK_ENABLE();
+
+    /* Peripheral interrupt init*/
+    HAL_NVIC_SetPriority(TIM4_IRQn, 6, 0);
+    HAL_NVIC_EnableIRQ(TIM4_IRQn);
+ 
+		/* Enable the timer clock */
+		HAL_TIM_Base_Start_IT(tim_baseHandle);
+
+  }
 }
 
 
@@ -159,24 +169,21 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
 
   if(tim_baseHandle->Instance==TIM10)
   {
-  /* USER CODE BEGIN TIM10_MspDeInit 0 */
-
-  /* USER CODE END TIM10_MspDeInit 0 */
     /* Peripheral clock disable */
     __HAL_RCC_TIM10_CLK_DISABLE();
 
     /* TIM10 interrupt Deinit */
     HAL_NVIC_DisableIRQ(TIM1_UP_TIM10_IRQn);
-  /* USER CODE BEGIN TIM10_MspDeInit 1 */
+  }else if(tim_baseHandle->Instance==TIM4)
+  {
+    /* Peripheral clock disable */
+    __TIM4_CLK_DISABLE();
 
-  /* USER CODE END TIM10_MspDeInit 1 */
+    /* Peripheral interrupt Deinit*/
+    HAL_NVIC_DisableIRQ(TIM4_IRQn);
   }
 } 
 
-/* USER CODE BEGIN 1 */
-//void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim){
-		
-//}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	  // This callback is automatically called by the HAL on the UEV event
@@ -187,11 +194,74 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 				Do_Ir_Rmt_Txr();
 	  }else if(htim->Instance==TIM3)
 		{
-			BSP_Background();
-		}
+				BSP_Background();
+		}else if(htim->Instance==TIM4)
+    {
+				/* Peripheral clock disable */
+				__TIM4_CLK_DISABLE();
+
+				/* Peripheral interrupt Deinit*/
+				HAL_NVIC_DisableIRQ(TIM4_IRQn);
+    }
 }
 
-/* USER CODE END 1 */
+static uint16_t tmr4pd;
+/* TIM4 init function */
+void MX_TIM4_Init(uint32_t baud, uint8_t bits)
+{
+  /*frame timeout*/
+  float frmto;
+  /*Timer tick 10uS*/
+  float tick = .000010;
+ 
+  
+  /*Frame Seperation Time (3.5 chars) = 1/baud * (qty bits) * 3.5*/
+  /*Qty Bits = 1start + 8 data + qty stop + qty parity Default = 10*/
+  frmto = ((1.00f/(float)baud) * bits) * 3.5f;
+  tmr4pd = (uint16_t)(frmto/tick);
+  //tmr4pd = UINT16_MAX - tmr4pd;
+    
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_MasterConfigTypeDef sMasterConfig;
+
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 1679;/*10uS tick*/
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = tmr4pd;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  HAL_TIM_Base_Init(&htim4);
+    
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig);
+  
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig);
+}
+
+
+void MX_Timer4_StartStop(uint8_t on)
+{
+    if(on == 1)
+    {
+        /*Clear counter*/
+        __HAL_TIM_SET_COUNTER(&htim4,0);
+        HAL_TIM_Base_Start_IT(&htim4);
+    }else{
+        /*Shutdown timer*/
+         HAL_TIM_Base_Stop_IT(&htim4);
+        /*Clear counter*/
+        __HAL_TIM_SET_COUNTER(&htim4,0);
+    }
+}
+
+
+
+void MX_Timer4_Clear(void)
+{
+			/*Clear counter*/
+			__HAL_TIM_SET_COUNTER(&htim4,0);
+}
 
 /**
   * @}

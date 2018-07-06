@@ -34,6 +34,8 @@
 ".\output\hvac_ctl.o"
 ".\output\ir_rmt_txr.o"
 ".\output\tim.o"
+".\output\usart.o"
+".\output\modbusrtu.o"
 ".\output\ili9341.o"
 ".\output\stmpe811.o"
 ".\output\system_stm32f4xx.o"

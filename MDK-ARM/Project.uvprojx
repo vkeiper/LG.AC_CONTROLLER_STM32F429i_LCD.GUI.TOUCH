@@ -581,6 +581,16 @@
               <FileType>1</FileType>
               <FilePath>..\Src\tim.c</FilePath>
             </File>
+            <File>
+              <FileName>usart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\usart.c</FilePath>
+            </File>
+            <File>
+              <FileName>modbusrtu.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\modbusrtu.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

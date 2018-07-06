@@ -61,15 +61,17 @@
 #define MINVER 0u
 #define BLDVER 3u
 #define YERVER 18u
-#define MONVER 06u
-#define DAYVER 21u
-#define HRSVER 16u
-#define MNSVER 49u
+#define MONVER 07u
+#define DAYVER 05u
+#define HRSVER 19u
+#define MNSVER 30u
 #define APPNUM "2018_A021"
 #define APPNAME "LG AC Controller\IR emulator w/ autodefrost"
 #define AUTHRFULL "Vince Keiper"
 #define AUTHRABR "V.K. "
 
+//v0.0.3  1807051930  1. Moved IR led to PD7 from PD2
+//                    2. Addded UART5 Rx,TX for phy to talk to ESP3 MQTT to UART gateway 
 //v0.0.2  1805282335  1. Addded AcCooling sensing based on delta between condensor and room temps.
 //                    2. Added hide of snowflake if not AcCooling (already hid if FrostError 
 //                    3. Added uptime count to overwrite condensor temp label. Until I have a better place
@@ -90,10 +92,11 @@
 #define DO_CIRC_SSR_GPIO_Port GPIOE
 #define DO_EVAP_SSR_Pin GPIO_PIN_6
 #define DO_EVAP_SSR_GPIO_Port GPIOE
-#define DO_IRLED_Pin GPIO_PIN_2
+#define DO_IRLED_Pin GPIO_PIN_7
 #define DO_IRLED_GPIO_Port GPIOD
 #define IRLED_GPIO_CLK_ENABLE()                  __HAL_RCC_GPIOD_CLK_ENABLE()  
 #define IRLED_GPIO_CLK_DISABLE()                 __HAL_RCC_GPIOD_CLK_DISABLE()  
+
 
 /* Exported variables --------------------------------------------------------*/
 extern char dbglog[64];

@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : TIM.h
+  * File Name          : USART.h
   * Description        : This file provides code for the configuration
-  *                      of the TIM instances.
+  *                      of the USART instances.
   ******************************************************************************
   ** This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -37,22 +37,21 @@
   ******************************************************************************
   */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __tim_H
-#define __tim_H
+#ifndef __usart_H
+#define __usart_H
 #ifdef __cplusplus
  extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
+#include "stm32f4xx_hal.h"
 #include "main.h"
 
-#define TMRRUN 1u
-#define TMRSTOP 0u 
-          
+/* USER CODE BEGIN Includes */
 
-extern TIM_HandleTypeDef htim1;
-extern TIM_HandleTypeDef htim3;
-extern TIM_HandleTypeDef htim4;
+/* USER CODE END Includes */
+
+extern UART_HandleTypeDef huart5;
 
 /* USER CODE BEGIN Private defines */
 
@@ -60,15 +59,8 @@ extern TIM_HandleTypeDef htim4;
 
 extern void _Error_Handler(char *, int);
 
-void TIM1_Init(void);
-void TIM3_Init(void);
-                    
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-                
-void MX_TIM4_Init(uint32_t baud, uint8_t bits);
-void MX_Timer4_StartStop(uint8_t on);
-void MX_Timer4_Clear(void);
-
+void MX_UART5_Init(void);
+void MX_USART5_UART_DeInit(void);
 /* USER CODE BEGIN Prototypes */
 
 /* USER CODE END Prototypes */
@@ -76,7 +68,7 @@ void MX_Timer4_Clear(void);
 #ifdef __cplusplus
 }
 #endif
-#endif /*__ tim_H */
+#endif /*__ usart_H */
 
 /**
   * @}

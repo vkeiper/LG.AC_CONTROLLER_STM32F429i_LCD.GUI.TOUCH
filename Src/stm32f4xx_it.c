@@ -39,7 +39,7 @@ extern volatile GUI_TIMER_TIME OS_TimeMS;
 extern LTDC_HandleTypeDef hltdc;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim1;
-
+extern UART_HandleTypeDef huart5;
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -189,6 +189,21 @@ void TIM3_IRQHandler(void)
 void LTDC_IRQHandler(void)
 {
   HAL_LTDC_IRQHandler(&hltdc);
+}
+
+
+/**
+* @brief This function handles UART5 global interrupt.
+*/
+void UART5_IRQHandler(void)
+{
+  /* USER CODE BEGIN UART5_IRQn 0 */
+
+  /* USER CODE END UART5_IRQn 0 */
+  HAL_UART_IRQHandler(&huart5);
+  /* USER CODE BEGIN UART5_IRQn 1 */
+
+  /* USER CODE END UART5_IRQn 1 */
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

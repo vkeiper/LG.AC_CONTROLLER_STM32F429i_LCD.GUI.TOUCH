@@ -8,39 +8,6 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright © 2017 STMicroelectronics International N.V. 
-  * All rights reserved.</center></h2>
-  *
-  * Redistribution and use in source and binary forms, with or without 
-  * modification, are permitted, provided that the following conditions are met:
-  *
-  * 1. Redistribution of source code must retain the above copyright notice, 
-  *    this list of conditions and the following disclaimer.
-  * 2. Redistributions in binary form must reproduce the above copyright notice,
-  *    this list of conditions and the following disclaimer in the documentation
-  *    and/or other materials provided with the distribution.
-  * 3. Neither the name of STMicroelectronics nor the names of other 
-  *    contributors to this software may be used to endorse or promote products 
-  *    derived from this software without specific written permission.
-  * 4. This software, including modifications and/or derivative works of this 
-  *    software, must execute solely and exclusively on microcontroller or
-  *    microprocessor devices manufactured by or for STMicroelectronics.
-  * 5. Redistribution and use of this software other than as permitted under 
-  *    this license is void and will automatically terminate your rights under 
-  *    this license. 
-  *
-  * THIS SOFTWARE IS PROVIDED BY STMICROELECTRONICS AND CONTRIBUTORS "AS IS" 
-  * AND ANY EXPRESS, IMPLIED OR STATUTORY WARRANTIES, INCLUDING, BUT NOT 
-  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
-  * PARTICULAR PURPOSE AND NON-INFRINGEMENT OF THIRD PARTY INTELLECTUAL PROPERTY
-  * RIGHTS ARE DISCLAIMED TO THE FULLEST EXTENT PERMITTED BY LAW. IN NO EVENT 
-  * SHALL STMICROELECTRONICS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-  * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, 
-  * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
-  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
-  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
   */
@@ -53,7 +20,9 @@
 #include "gpio.h"
 #include "10kntc.h"
 #include "hvac_ctl.h"
-
+#include "usart.h"
+#include "modbusrtu.h"
+#include <string.h>
 
 /* Global variables -----------------------------------------------------------*/
 extern WM_HWIN CreateWindow(void);
@@ -67,6 +36,7 @@ uint8_t GUI_Initialized = 0;
 char dbglog[64];
 __IO uint8_t ubKeyPressed = RESET; 
 uint8_t i;
+uint8_t mqttbuff[64];
 
 /* Private function prototypes -----------------------------------------------*/
 static void BSP_Config(void);
@@ -111,7 +81,7 @@ int main(void)
   MX_GPIO_Init();
 	
   TIM3_Init();
-  
+
   /* Init the STemWin GUI Library */
   GUI_Init();
   GUI_Initialized = 1;
@@ -133,6 +103,10 @@ int main(void)
 			/* Run HVAC control\monitoring\auto-defrost */
 			DoHvacSimpleMode();
 		
+			/* Run UART server to receive commands from MQTT or other remote device */
+			DoUartServer();
+			
+			
 			/* Transmit IR Remote command has been requested              */
 			/* Mode change method async of the DoHvac...                  */
 			/* Mode change register is set in DoHvac with qty tx's needed */
@@ -163,16 +137,32 @@ int main(void)
 			}
 				
 			
-			/*Send PWR if button clicked*/
+			/* Stuff to do every 1 second */
 			if(HAL_GetTick() > t_run + 1000){
-				t_run = HAL_GetTick();
-				
+					t_run = HAL_GetTick();
+					
+					/*Format and transmit MQTT frame for ROOM TEMP */
+					sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TEMP/ROOM %2.0f\n",ctldata_s.cond_s.rdb);
+					AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+					
+					/*Format and transmit MQTT frame for Condensing Coil TEMP */
+					sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TEMP/COND %2.0f\n",ctldata_s.cond_s.rdb);
+					AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+					
+					/*Format and transmit MQTT frame for PWR ON state */
+					sprintf((char*)&mqttbuff,"/FROMHVAC/GET/PWR %s\n",HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET ? "ON" : "OFF");
+					AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+					
+					/*Format and transmit MQTT frame for Frost Error state */
+					sprintf((char*)&mqttbuff,"/FROMHVAC/GET/FROST %s\n",ctldata_s.bFrostCheck == TRUE ? "TRUE" : "FALSE");
+					AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
 			}else{
-				
+				/* Send PWR if button clicked*/
 				if(ubKeyPressed == SET){
 						SendFrame(BTN_PWR);
 						ubKeyPressed = RESET;
 					
+						/* changed demanded state */
 						if(ctldata_s.dmdmode_e != EDMDMD_COOL){
 							ctldata_s.dmdmode_e =  EDMDMD_COOL;
 						}else{
@@ -183,37 +173,6 @@ int main(void)
 	}
 }
 
-///**
-//  * @brief  Period elapsed callback in non blocking mode
-//  * @param  htim: TIM handle
-//  * @retval None
-//  */
-//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-//{
-//  BSP_Background();
-//}
-
-///**
-//  * @brief TIM MSP Initialization 
-//  *        This function configures the hardware resources used in This application: 
-//  *           - Peripheral's clock enable
-//  *           - Peripheral's GPIO Configuration  
-//  * @param htim: TIM handle pointer
-//  * @retval None
-//  */
-//void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim)
-//{
-//  /*##-1- Enable peripherals and GPIO Clocks #################################*/
-//  /* TIMx Peripheral clock enable */
-//  __HAL_RCC_TIM3_CLK_ENABLE();
-
-//  /*##-2- Configure the NVIC for TIMx ########################################*/
-//  /* Set the TIMx priority */
-//  HAL_NVIC_SetPriority(TIM3_IRQn, 0, 1);
-//  
-//  /* Enable the TIMx global Interrupt */
-//  HAL_NVIC_EnableIRQ(TIM3_IRQn);
-//}
 
 /**
   * @brief  Initializes the STM32F429I-DISCO's LCD and LEDs resources.
