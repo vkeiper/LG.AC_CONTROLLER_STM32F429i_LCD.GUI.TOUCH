@@ -15,8 +15,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
+/*  Publc vars */
+extern uint16_t uiMbRxdCmdCnt;
 
-
+	 /* exposed functions */
 uint8_t DoUartServer(void);
 void SER_TmrCpltCallback(void);
 HAL_StatusTypeDef AsyncTransmit(uint8_t *pBuff,uint16_t len);

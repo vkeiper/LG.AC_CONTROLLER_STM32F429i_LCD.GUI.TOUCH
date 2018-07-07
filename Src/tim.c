@@ -203,7 +203,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     }
 }
 
-static uint16_t tmr4pd;
+//TODO: timer 4 not working, crashes system
+//static uint16_t tmr4pd;
 /* TIM4 init function */
 void MX_TIM4_Init(uint32_t baud, uint8_t bits)
 {

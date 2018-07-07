@@ -125,7 +125,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=-1,-1,-1,-1,0)(1007=-1,-1,-1,-1,0)(1008=-1,-1,-1,-1,0)(1009=-1,-1,-1,-1,0)(1012=-1,-1,-1,-1,0)</Name>
+          <Name>(1010=75,104,525,661,0)(1007=-1,-1,-1,-1,0)(1008=-1,-1,-1,-1,0)(1009=-1,-1,-1,-1,0)(1012=-1,-1,-1,-1,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -152,9 +152,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>188</LineNumber>
-          <EnabledFlag>0</EnabledFlag>
-          <Address>134227570</Address>
+          <LineNumber>375</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134255712</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -163,14 +163,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\modbusrtu.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\188</Expression>
+          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\375</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>220</LineNumber>
-          <EnabledFlag>0</EnabledFlag>
-          <Address>134227642</Address>
+          <LineNumber>250</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134227674</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -179,14 +179,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\modbusrtu.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\220</Expression>
+          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\250</Expression>
         </Bp>
         <Bp>
           <Number>2</Number>
           <Type>0</Type>
-          <LineNumber>372</LineNumber>
-          <EnabledFlag>0</EnabledFlag>
-          <Address>134255684</Address>
+          <LineNumber>212</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134227610</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -195,23 +195,23 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\modbusrtu.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\372</Expression>
+          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\212</Expression>
         </Bp>
         <Bp>
           <Number>3</Number>
           <Type>0</Type>
-          <LineNumber>447</LineNumber>
+          <LineNumber>457</LineNumber>
           <EnabledFlag>0</EnabledFlag>
-          <Address>134225876</Address>
+          <Address>0</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
+          <BreakIfRCount>0</BreakIfRCount>
           <Filename>..\Src\modbusrtu.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\447</Expression>
+          <Expression></Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -228,15 +228,10 @@
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>pRxBuffer</ItemText>
-        </Ww>
-        <Ww>
-          <count>3</count>
-          <WinNumber>1</WinNumber>
           <ItemText>sPayload</ItemText>
         </Ww>
         <Ww>
-          <count>4</count>
+          <count>3</count>
           <WinNumber>1</WinNumber>
           <ItemText>RxBuffer</ItemText>
         </Ww>
@@ -291,6 +286,12 @@
       <pszMrulep></pszMrulep>
       <pSingCmdsp></pSingCmdsp>
       <pMultCmdsp></pMultCmdsp>
+      <SystemViewers>
+        <Entry>
+          <Name>System Viewer\UART5</Name>
+          <WinId>35905</WinId>
+        </Entry>
+      </SystemViewers>
       <DebugDescription>
         <Enable>1</Enable>
         <EnableLog>0</EnableLog>
@@ -790,7 +791,7 @@
       <GroupNumber>4</GroupNumber>
       <FileNumber>39</FileNumber>
       <FileType>1</FileType>
-      <tvExp>1</tvExp>
+      <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\Src\modbusrtu.c</PathWithFileName>

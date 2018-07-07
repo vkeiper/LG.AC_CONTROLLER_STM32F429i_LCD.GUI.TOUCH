@@ -46,7 +46,7 @@
 
 #define sCMDDELIM " "
 #define sVALDELIM "\n"
-#define TXINTERVALMS 500u
+#define TXINTERVALMS 100u
 
 /*
  * Comment out define below to use with ESP32 MQTT to UART GWY, it does not expect a CR
@@ -93,14 +93,15 @@ typedef enum{
 
 static e_UartState uaState;
 
-uint8_t RxBuffer[64],TxBuffer[64],rxtmp[16];
-uint8_t RxPayload[16];
-uint8_t *pRxBuffer;
-uint8_t *pTxBuffer;
-uint8_t GeneralCmdSyntax[QTYCMDS][32];
+uint8_t RxBuffer[128],TxBuffer[128],rxtmp[128];
+
+uint8_t *pRxBuffer = &RxBuffer[0];
+uint8_t *pTxBuffer = &TxBuffer[0];
+uint16_t uiMbRxdCmdCnt=0;
+uint8_t GeneralCmdSyntax[QTYCMDS][64];
 void (*FuncCmdArray[QTYCMDS])(uint8_t *cmd);
 static uint16_t uiCmdCount;
-static uint8_t sPayload[16];
+static uint8_t sPayload[64];
 
 /* Private function prototypes -----------------------------------------------*/
 static void LoadSyntax(void);
@@ -129,7 +130,7 @@ static void _MBDumpFrame(void)
 uint8_t DoUartServer(void)
 {
   uint8_t retval = 0x00, bReady4Tx;
-	uaCtl_t.t_BtwnExe = !uaCtl_t.t_BtwnExe;
+	uint32_t t_RxIeOff=0;
     
     /*Main State Machine*/
     switch (uaState){
@@ -188,11 +189,31 @@ uint8_t DoUartServer(void)
                 pRxBuffer = &RxBuffer[0];
                 /*Allow UART RX ISR to poppulate buffer*/
                 uaCtl_t.bEOF =0;
-                uaState = UARXDDATA;
+                uaState = UAPROCFRAME;
+								t_RxIeOff=0;//must have just rxd a frame so clear timer
                 break;
             }else{
 								/* Transmit status msg in round robin */
 								TransmitStatus();
+							
+								/* Trap if RX ISR off */
+//								if(t_RxIeOff ==0 && (__HAL_UART_GET_FLAG(&huart5,UART_FLAG_RXNE) == RESET)){
+//										t_RxIeOff = TICKGETU32();
+//										
+//								}
+								
+								if(TICKGETU32() > t_RxIeOff + 1000){
+										
+										if(HAL_UART_Receive_IT(&huart5, &rxtmp[0], 1) != HAL_OK)
+										{
+												t_RxIeOff =0;
+											
+										}else{
+												t_RxIeOff = TICKGETU32();
+										
+										}
+								}
+								
 						}
            				
 		break;	
@@ -222,6 +243,16 @@ uint8_t DoUartServer(void)
                 /*Go BAck to RX mode*/
                 uaState = UAWAIT4RX;
             }
+						
+						/*## Re-Start UART reception IT process ##*/  
+						/* Any data received will be stored buffer via the pointer passed in : the number max of 
+						 data received is 1 char */
+						if(HAL_UART_Receive_IT(&huart5, &rxtmp[0], 1) != HAL_OK)
+						{
+								/* Transfer error in reception process */
+							 // uaCtl_t.bRxErr =1;     
+						}
+						
 		break;
 	  
 		case UATXDATA:
@@ -329,35 +360,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
   */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
-    /* indicate we received a Data */
-		//uaCtl_t.bRxdData = 1;
-		//uaCtl_t.t_LstRxChar = TICKGETU32();
-	
-		/*Byte Received,  Start timer*/
-		//MX_Timer4_StartStop(TMRRUN);
-    
-    /*
-        1. NOT in UAWAIT4RX mode?
-        2. Last Frame not processed yet?
-        = Dump char & keep rx ptr at 0
-    */
-//    if(uaState != UAWAIT4RX || uaCtl_t.bEOF ==1)
-//    {
-//        memset(&rxtmp,0,sizeof(rxtmp));
-//        /*Reset pointer to start of rx buff*/
-//        pRxBuffer = &RxBuffer[0];
-//        uaCtl_t.RxByteCnt =0;
-//        
-//        /* do not indicate we received data */
-//        uaCtl_t.bRxdData = 0;
-//    } 
-//    
-//    /*1. In UAWAIT4RX 
-//      2. No CHAR timeout
-//       = Stuff buffer, handle those operations
-//    */
-//    else{
-    
+       
         /* Only get here if 1. In UAWAIT4RX state
            2. Gap between char <1.5 char time
         */
@@ -368,23 +371,30 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
             *pRxBuffer = rxtmp[0];
             pRxBuffer++;
             uaCtl_t.RxByteCnt++;
-					  if(rxtmp[0] == '\n')
+					  if(rxtmp[0] == '\n'){
 									uaCtl_t.bRxdData = 1;
-
+						}else{
+							  /* Get more chars */
+						    if(HAL_UART_Receive_IT(&huart5, &rxtmp[0], 1) != HAL_OK)
+								{
+										/* Transfer error in reception process */
+									 // uaCtl_t.bRxErr =1;     
+								}
+						}
         }else{
             /* RxBuffer Overflow error*/
-            uaCtl_t.bRxOvfl =1;      
+           // uaCtl_t.bRxOvfl =1;      
         }
     //}
     
     /*## Re-Start UART reception IT process ##*/  
     /* Any data received will be stored buffer via the pointer passed in : the number max of 
      data received is 1 char */
-    if(HAL_UART_Receive_IT(&huart5, &rxtmp[0], 1) != HAL_OK)
-    {
-        /* Transfer error in reception process */
-        uaCtl_t.bRxErr =1;     
-    }
+//    if(HAL_UART_Receive_IT(&huart5, &rxtmp[0], 1) != HAL_OK)
+//    {
+//        /* Transfer error in reception process */
+//       // uaCtl_t.bRxErr =1;     
+//    }
     
     /*Start end of frame timer*/
     //MX_Timer4_StartStop(TMRRUN);
@@ -547,6 +557,7 @@ void ParseMqttText(uint8_t *pBuff,uint16_t len)
 						/* If payload found set value in data structure */
 						if(GetPayload(pBuff)){
 									(*FuncCmdArray[i])((uint8_t*)&sPayload);
+									uiMbRxdCmdCnt++;
 						}
 						return;
         }
@@ -678,6 +689,11 @@ static void TransmitStatus(void)
 							uMsgIdx++;
 							/*Format and transmit MQTT frame for up-time */
 							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TIME/RUN %s%s",time_s.str,uartCMDTERM);
+							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+						}else if(uMsgIdx ==9){
+							uMsgIdx++;
+							/*Format and transmit MQTT frame for quantity received commandse */
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/CMD/RXD %d%s",uiMbRxdCmdCnt,uartCMDTERM);
 							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
 						}			
 						else{
