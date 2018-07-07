@@ -92,6 +92,7 @@ void DoHvacSimpleMode(void)
 												(((t_retry +  WARMUPSECONDS)-GetTick())/1000));
 												// time left  = tick_frst + 180,000  - ticknow  /180000
 												float tms  = ((t_retry +  (float)WARMUPSECONDS)-GetTick());
+												ctldata_s.ulWarmupSec = (uint32_t)tms;
 										    tms = ((float)tms/(float)WARMUPSECONDS)*(float)100.0;
 												ctldata_s.ucWarmPcnt = (uint8_t)tms;
 #endif
@@ -120,33 +121,33 @@ static bool FrostCheck(void)
 	  static bool retval = FALSE,lastfrost;
 	  bool frost;
 			
-    ctldata_s.cond_s.rdbraw = GetAdcConversion(hadc1);/*condensor temp*/
-		ctldata_s.set1_s.rdbraw  = GetAdcConversion(hadc3);/*room air*/
+    ctldata_s.condCoil.rdbraw = GetAdcConversion(hadc1);/*condensor temp*/
+		ctldata_s.acCooTemps.rdbraw  = GetAdcConversion(hadc3);/*room air*/
 		
     
-    ctldata_s.cond_s.rdbC = (float)ProcessRT(ctldata_s.cond_s.rdbraw);
-    ctldata_s.set1_s.rdbC = (float)ProcessRT(ctldata_s.set1_s.rdbraw);
+    ctldata_s.condCoil.rdbC = (float)ProcessRT(ctldata_s.condCoil.rdbraw);
+    ctldata_s.acCooTemps.rdbC = (float)ProcessRT(ctldata_s.acCooTemps.rdbraw);
     
-    ctldata_s.cond_s.rdb = ctldata_s.cond_s.rdbC* 9/5 + 32;
-    ctldata_s.set1_s.rdb = ctldata_s.set1_s.rdbC* 9/5 + 32;
+    ctldata_s.condCoil.rdb = ctldata_s.condCoil.rdbC* 9/5 + 32;
+    ctldata_s.acCooTemps.rdb = ctldata_s.acCooTemps.rdbC* 9/5 + 32;
     
     #ifdef DBGFROST2
 				sprintf(&dbgstr[0],"RM %d %2.0fdegC %2.0fdegF\n",
-            ctldata_s.set1_s.rdbraw,ctldata_s.set1_s.rdbC, ctldata_s.set1_s.rdb);
+            ctldata_s.acCooTemps.rdbraw,ctldata_s.acCooTemps.rdbC, ctldata_s.acCooTemps.rdb);
         LCD_UsrLog("%s",dbgstr);
 		    
         sprintf(&dbgstr[0],"CD %d %2.2fdegC %2.2fdegF\n",
-            ctldata_s.cond_s.rdbraw,ctldata_s.cond_s.rdbC, ctldata_s.cond_s.rdb);
+            ctldata_s.condCoil.rdbraw,ctldata_s.condCoil.rdbC, ctldata_s.condCoil.rdb);
         LCD_UsrLog("%s",dbgstr);
 		#endif
 #ifdef DBGFROST2
 		sprintf(&dbgstr[0],"Rm %2.0fF Cd %2.0fF",
-            ctldata_s.set1_s.rdb,ctldata_s.cond_s.rdb );
+            ctldata_s.acCooTemps.rdb,ctldata_s.condCoil.rdb );
 		LCD_LOG_SetHeader((uint8_t*)&dbgstr);
 #endif    
 			
 		
-  if( ctldata_s.cond_s.rdb <= (float)FROSTTEMP ){
+  if( ctldata_s.condCoil.rdb <= (float)FROSTTEMP ){
 			frost = TRUE;
 #ifdef DBGFROST3
 			sprintf(dbglog,"FROST IMMINENT Count:%d Level %2.3f",cnt,FROSTTEMP);
@@ -303,12 +304,12 @@ void SetAcState(void)
             // Test if pump should be turned on
             // If NO frost_flt && AC pump off && temp goes 2deg > demand turn pump on
             if( !ctldata_s.bFrostErr && 
-                (ctldata_s.set1_s.rdb >= ctldata_s.set1_s.dmd + ctldata_s.set1_s.rnghi && 
+                (ctldata_s.acCooTemps.rdb >= ctldata_s.acCooTemps.dmd + ctldata_s.acCooTemps.rnghi && 
                 (HAL_GPIO_ReadPin(DO_MAINS_SSR_GPIO_Port,DO_MAINS_SSR_Pin) == GPIO_PIN_RESET))){
 									
 								HAL_GPIO_WritePin(DO_MAINS_SSR_GPIO_Port,DO_MAINS_SSR_Pin,GPIO_PIN_SET);
-							//LogEntry = String(time_s.str) + " [AC STATE] REMOTE DMD PUMPON " + String(ctldata_s.set1_s.dmd) + " RDB " + String(ctldata_s.set1_s.rdb) +
-							//  " RNGLO " + String(ctldata_s.set1_s.rnglo) + " RNGH " + String(ctldata_s.set1_s.rnghi) +"\n";
+							//LogEntry = String(time_s.str) + " [AC STATE] REMOTE DMD PUMPON " + String(ctldata_s.acCooTemps.dmd) + " RDB " + String(ctldata_s.acCooTemps.rdb) +
+							//  " RNGLO " + String(ctldata_s.acCooTemps.rnglo) + " RNGH " + String(ctldata_s.acCooTemps.rnghi) +"\n";
 							//LogEntry.toCharArray(dbgstr, sizeof(dbgstr));
 							//Serial.println(dbgstr);
 						 // LOG pump cycle to SD card
@@ -317,11 +318,11 @@ void SetAcState(void)
             //Test if pump should be turn off
             // If frost_flt OR AC pump on and temp goes 2deg > demand turn pump on
             if( ctldata_s.bFrostErr || 
-                (ctldata_s.set1_s.rdb <= ctldata_s.set1_s.dmd - ctldata_s.set1_s.rnglo && 
+                (ctldata_s.acCooTemps.rdb <= ctldata_s.acCooTemps.dmd - ctldata_s.acCooTemps.rnglo && 
                 (HAL_GPIO_ReadPin(DO_MAINS_SSR_GPIO_Port,DO_MAINS_SSR_Pin) == GPIO_PIN_SET))){
               HAL_GPIO_WritePin(DO_MAINS_SSR_GPIO_Port,DO_MAINS_SSR_Pin,GPIO_PIN_RESET);
-//							LogEntry = String(time_s.str) + " [AC STATE] REMOTE DMD PUMPOFF " + String(ctldata_s.set1_s.dmd) + " RDB " + String(ctldata_s.set1_s.rdb) +
-//								" RNGLO " + String(ctldata_s.set1_s.rnglo) + " RNGH " + String(ctldata_s.set1_s.rnghi) + "\n";
+//							LogEntry = String(time_s.str) + " [AC STATE] REMOTE DMD PUMPOFF " + String(ctldata_s.acCooTemps.dmd) + " RDB " + String(ctldata_s.acCooTemps.rdb) +
+//								" RNGLO " + String(ctldata_s.acCooTemps.rnglo) + " RNGH " + String(ctldata_s.acCooTemps.rnghi) + "\n";
 //							LogEntry.toCharArray(dbgstr, sizeof(dbgstr));
 //							Serial.println(dbgstr);
 			 

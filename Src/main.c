@@ -31,12 +31,14 @@ extern WM_HWIN CreateWindow(void);
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
+
+
 /* Private variables ---------------------------------------------------------*/
 uint8_t GUI_Initialized = 0;
 char dbglog[64];
 __IO uint8_t ubKeyPressed = RESET; 
 uint8_t i;
-uint8_t mqttbuff[64];
+
 
 /* Private function prototypes -----------------------------------------------*/
 static void BSP_Config(void);
@@ -138,24 +140,8 @@ int main(void)
 				
 			
 			/* Stuff to do every 1 second */
-			if(HAL_GetTick() > t_run + 1000){
+			if(HAL_GetTick() > t_run + 500){
 					t_run = HAL_GetTick();
-					
-					/*Format and transmit MQTT frame for ROOM TEMP */
-					sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TEMP/ROOM %2.0f\n",ctldata_s.cond_s.rdb);
-					AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
-					
-					/*Format and transmit MQTT frame for Condensing Coil TEMP */
-					sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TEMP/COND %2.0f\n",ctldata_s.cond_s.rdb);
-					AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
-					
-					/*Format and transmit MQTT frame for PWR ON state */
-					sprintf((char*)&mqttbuff,"/FROMHVAC/GET/PWR %s\n",HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET ? "ON" : "OFF");
-					AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
-					
-					/*Format and transmit MQTT frame for Frost Error state */
-					sprintf((char*)&mqttbuff,"/FROMHVAC/GET/FROST %s\n",ctldata_s.bFrostCheck == TRUE ? "TRUE" : "FALSE");
-					AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
 			}else{
 				/* Send PWR if button clicked*/
 				if(ubKeyPressed == SET){

@@ -52,7 +52,7 @@ struct s_manual{
 };
 
 //in deg F
-struct s_setpt{
+struct s_temp{
   float dmd;
   float rdb;
   float rdbC;
@@ -74,13 +74,13 @@ struct s_control{
 	bool bFrostCheck;
   bool bFrostErr;
   bool bTstatCoolDmd;
-  struct s_setpt set1_s;
-  struct s_setpt set2_s;
-  struct s_setpt cond_s;
+  struct s_temp acCooTemps;
+  struct s_temp condCoil;
 	int8_t tempint;
 	int8_t vrefint;
 	uint8_t bModeChg;
-	uint8_t ucWarmPcnt;
+	uint32_t ulWarmupSec;/* seconds remaining until warmup period complete*/
+	uint8_t ucWarmPcnt;/*0-100 percntage remaining until warmup period complete*/
 	bool bModeCool;
 };
 

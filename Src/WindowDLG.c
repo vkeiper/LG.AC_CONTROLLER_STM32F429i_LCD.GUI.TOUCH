@@ -809,9 +809,9 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       switch(NCode) {
       case WM_NOTIFICATION_CLICKED:
         // USER START (Optionally insert code for reacting on notification message)
-				ctldata_s.set1_s.dmd = ctldata_s.set1_s.dmd +1.00;
-			  if(ctldata_s.set1_s.dmd >= 72.00){
-					ctldata_s.set1_s.dmd = 55.00;
+				ctldata_s.acCooTemps.dmd = ctldata_s.acCooTemps.dmd +1.00;
+			  if(ctldata_s.acCooTemps.dmd >= 72.00){
+					ctldata_s.acCooTemps.dmd = 55.00;
 				}
         // USER END
         break;
@@ -877,12 +877,12 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
 		
 case WM_PAINT:
 			/*update room temp*/
-      sprintf(dispstr,"%2.0f",ctldata_s.set1_s.rdb);
+      sprintf(dispstr,"%2.0f",ctldata_s.acCooTemps.rdb);
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
 			TEXT_SetText(hItem, dispstr);
 			
 			/*update condensor temp*/
-			sprintf(dispstr,"%2.0f",ctldata_s.cond_s.rdb);
+			sprintf(dispstr,"%2.0f",ctldata_s.condCoil.rdb);
 			hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_2);
 			TEXT_SetText(hItem, dispstr);
 			if(ctldata_s.bFrostErr == FALSE){

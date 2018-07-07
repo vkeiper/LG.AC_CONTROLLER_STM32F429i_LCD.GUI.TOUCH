@@ -6,7 +6,7 @@
   ******************************************************************************
   */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __mbrtu
+#ifndef __mbrtu_H
 #define __mbrtu_H
 #ifdef __cplusplus
  extern "C" {
@@ -14,7 +14,11 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+
+
+
 uint8_t DoUartServer(void);
+void SER_TmrCpltCallback(void);
 HAL_StatusTypeDef AsyncTransmit(uint8_t *pBuff,uint16_t len);
 #ifdef __cplusplus
 }

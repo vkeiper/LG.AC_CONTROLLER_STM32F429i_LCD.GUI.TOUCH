@@ -22,14 +22,41 @@
 #include "main.h"
 #include <string.h>
 #include "stm32f4xx_hal.h"
+#include "modbusrtu.h"
 #include "usart.h"
 #include "tim.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include "ctype.h"
+#include "hvac_ctl.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 #define TICKGETU32() HAL_GetTick()
 #define RXBUFFERSIZE 64u
+
+#define strTRUE  "TRUE"
+#define strFALSE "FALSE"
+#define strON    "ON"
+#define strOFF   "OFF"
+
+#define QTYCMDS 4u
+#define MAXCHARS 32u
+
+#define sCMDDELIM " "
+#define sVALDELIM "\n"
+#define TXINTERVALMS 500u
+
+/*
+ * Comment out define below to use with ESP32 MQTT to UART GWY, it does not expect a CR
+ */
+#define WINDOWSTERMMODE
+#ifdef WINDOWSTERMMODE
+	#define uartCMDTERM "\r\n"
+#else
+	#define uartCMDTERM "\n"
+#endif
 
 /* Private variables ---------------------------------------------------------*/
 typedef struct{
@@ -67,13 +94,24 @@ typedef enum{
 static e_UartState uaState;
 
 uint8_t RxBuffer[64],TxBuffer[64],rxtmp[16];
+uint8_t RxPayload[16];
 uint8_t *pRxBuffer;
 uint8_t *pTxBuffer;
+uint8_t GeneralCmdSyntax[QTYCMDS][32];
+void (*FuncCmdArray[QTYCMDS])(uint8_t *cmd);
+static uint16_t uiCmdCount;
+static uint8_t sPayload[16];
 
 /* Private function prototypes -----------------------------------------------*/
-
-/* Private functions ---------------------------------------------------------*/
+static void LoadSyntax(void);
+static uint8_t  GetPayload(uint8_t *pBuff);
 static void ParseMqttText(uint8_t *pBuff,uint16_t len);
+static void CommandFunctionSetPwrState(uint8_t *pBuff);
+static void CommandFunctionSetTempDmd(uint8_t *pBuff);
+static void CommandFunctionSetCtlMode(uint8_t *pBuff);
+static void CommandFunctionSetOpMode(uint8_t *pBuff);
+static void TransmitStatus(void);
+/* Private functions ---------------------------------------------------------*/
 
 static void _MBDumpFrame(void)
 {
@@ -91,8 +129,7 @@ static void _MBDumpFrame(void)
 uint8_t DoUartServer(void)
 {
   uint8_t retval = 0x00, bReady4Tx;
-	  
-  uaCtl_t.t_BtwnExe = !uaCtl_t.t_BtwnExe;
+	uaCtl_t.t_BtwnExe = !uaCtl_t.t_BtwnExe;
     
     /*Main State Machine*/
     switch (uaState){
@@ -113,12 +150,13 @@ uint8_t DoUartServer(void)
 			/*Start off with pointer at start of buffer*/
 			pRxBuffer = &RxBuffer[0];
 			pTxBuffer = &TxBuffer[0];
+			LoadSyntax();
 			
 			MX_UART5_Init();
 
 			
 			/*Initialiize the end of frame HW timer based on uart baud & qty bits in char*/
-			MX_TIM4_Init(huart5.Init.BaudRate,10u);
+			//MX_TIM4_Init(huart5.Init.BaudRate,10u);
 			
 			/*## Start UART reception process ##*/  
 			/* Any data received will be stored buffer via the pointer passed in : the number max of 
@@ -132,9 +170,16 @@ uint8_t DoUartServer(void)
 			/*Set state to start receiving data*/
 			uaState = UAWAIT4RX;
 			
+			
 		break;
 
 		case UAWAIT4RX:
+						
+						if(uaCtl_t.bRxdData){
+								uaCtl_t.bRxdData =0;
+								uaCtl_t.t_LstRxChar = 0;
+								uaCtl_t.bEOF = 1;
+						}
             /*Wait for 3.5 char time EOF timer*/
             /* 1st bytes must be received in the uart ISR*/
             if(uaCtl_t.bEOF ==1)
@@ -145,7 +190,10 @@ uint8_t DoUartServer(void)
                 uaCtl_t.bEOF =0;
                 uaState = UARXDDATA;
                 break;
-            }
+            }else{
+								/* Transmit status msg in round robin */
+								TransmitStatus();
+						}
            				
 		break;	
 	  
@@ -253,6 +301,20 @@ uint8_t DoUartServer(void)
   * @note   Report end of IT Tx transfer 
   * @retval None
   */
+void SER_TmrCpltCallback(void)
+{
+	/* Reception complete*/
+	uaCtl_t.bEOF =1;
+}
+
+
+
+/**
+  * @brief  Tx Transfer completed callback
+  * @param  UartHandle: UART handle. 
+  * @note   Report end of IT Tx transfer 
+  * @retval None
+  */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
 	/* Transmission complete*/
@@ -268,34 +330,33 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
     /* indicate we received a Data */
-	uaCtl_t.bRxdData = 1;
-	//uaCtl_t.t_LstRxChar = TICKGETU32();
-    
-    /*Byte Received,  Stop EOF timer*/
-    MX_Timer4_StartStop(TMRSTOP);
-    
+		//uaCtl_t.bRxdData = 1;
+		//uaCtl_t.t_LstRxChar = TICKGETU32();
+	
+		/*Byte Received,  Start timer*/
+		//MX_Timer4_StartStop(TMRRUN);
     
     /*
         1. NOT in UAWAIT4RX mode?
         2. Last Frame not processed yet?
         = Dump char & keep rx ptr at 0
     */
-    if(uaState != UAWAIT4RX || uaCtl_t.bEOF ==1)
-    {
-        memset(&rxtmp,0,sizeof(rxtmp));
-        /*Reset pointer to start of rx buff*/
-        pRxBuffer = &RxBuffer[0];
-        uaCtl_t.RxByteCnt =0;
-        
-        /* do not indicate we received data */
-        uaCtl_t.bRxdData = 0;
-    } 
-    
-    /*1. In UAWAIT4RX 
-      2. No CHAR timeout
-       = Stuff buffer, handle those operations
-    */
-    else{
+//    if(uaState != UAWAIT4RX || uaCtl_t.bEOF ==1)
+//    {
+//        memset(&rxtmp,0,sizeof(rxtmp));
+//        /*Reset pointer to start of rx buff*/
+//        pRxBuffer = &RxBuffer[0];
+//        uaCtl_t.RxByteCnt =0;
+//        
+//        /* do not indicate we received data */
+//        uaCtl_t.bRxdData = 0;
+//    } 
+//    
+//    /*1. In UAWAIT4RX 
+//      2. No CHAR timeout
+//       = Stuff buffer, handle those operations
+//    */
+//    else{
     
         /* Only get here if 1. In UAWAIT4RX state
            2. Gap between char <1.5 char time
@@ -307,11 +368,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
             *pRxBuffer = rxtmp[0];
             pRxBuffer++;
             uaCtl_t.RxByteCnt++;
+					  if(rxtmp[0] == '\n')
+									uaCtl_t.bRxdData = 1;
+
         }else{
             /* RxBuffer Overflow error*/
             uaCtl_t.bRxOvfl =1;      
         }
-    }
+    //}
     
     /*## Re-Start UART reception IT process ##*/  
     /* Any data received will be stored buffer via the pointer passed in : the number max of 
@@ -323,7 +387,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
     }
     
     /*Start end of frame timer*/
-    MX_Timer4_StartStop(TMRRUN);
+    //MX_Timer4_StartStop(TMRRUN);
 }
 
 /**
@@ -353,10 +417,140 @@ void SetMbRtuEndOfFrame(void)
     }
 }
 
+/**
+  * @brief  Converts all chars to upper case to ease commparison 
+  * @param  *s: pointer to char buffer
+  * @param  N\A
+  * @note   None
+  * @retval None
+  */void ConvertToUpper(char *s)
+{
+	int len,i;
+
+	len = strlen(s);
+	for(i=0;i<len;i++)
+		s[i] = toupper(s[i]);
+}
+
+static void CommandFunctionSetPwrState(uint8_t *pBuff)
+{
+		if(strncmp((char*)pBuff,"ON",strlen("ON"))){
+				ctldata_s.dmdmode_e = EDMDMD_COOL;
+		}else{
+				ctldata_s.dmdmode_e = EDMDMD_NONE;
+		}
+}
+
+
+static void CommandFunctionSetTempDmd(uint8_t *pBuff)
+{
+		ctldata_s.acCooTemps.dmd = atof((char*)pBuff);
+}
+
+
+static void CommandFunctionSetCtlMode(uint8_t *pBuff)
+{
+		if(strncmp((char*)pBuff,"OFF",strlen("OFF"))){
+				ctldata_s.ctlmode_e = ECTLMD_OFF;
+		}else if(strncmp((char*)pBuff,"TSTAT",strlen("TSTAT"))){
+				ctldata_s.ctlmode_e = ECTLMD_TSTAT;
+		}else if(strncmp((char*)pBuff,"REMOTE",strlen("REMOTE"))){
+				ctldata_s.ctlmode_e = ECTLMD_REMOTE;
+		}else if(strncmp((char*)pBuff,"MANUAL",strlen("MANUAL"))){
+				ctldata_s.ctlmode_e = ECTLMD_MANUAL;
+		}else{
+				ctldata_s.ctlmode_e = ECTLMD_OFF;
+		}
+}
+
+
+static void CommandFunctionSetOpMode(uint8_t *pBuff)
+{
+		if(strncmp((char*)pBuff,"OFF",strlen("OFF"))){
+				ctldata_s.dmdmode_e = EDMDMD_NONE;
+		}else if(strncmp((char*)pBuff,"COOL",strlen("COOL"))){
+				ctldata_s.dmdmode_e = EDMDMD_COOL;
+		}else if(strncmp((char*)pBuff,"HEAT",strlen("HEAT"))){
+				ctldata_s.dmdmode_e = EDMDMD_HEAT;
+		}else{
+				ctldata_s.dmdmode_e = EDMDMD_NONE;
+		}
+}
+
+/******************************************************************************/
+/*                         LoadSyntax  					 		  												*/
+/******************************************************************************/
+static void LoadSyntax(void)
+{
+	int i=0;
+	strcpy((char*)GeneralCmdSyntax[i]		, "/FROMHVAC/SET/PWR");				
+	FuncCmdArray[i++] 	=	&CommandFunctionSetPwrState;
+
+	strcpy((char*)GeneralCmdSyntax[i]		, "/FROMHVAC/SET/TEMP/DMD");				
+	FuncCmdArray[i++] 	=	&CommandFunctionSetTempDmd;
+
+	strcpy((char*)GeneralCmdSyntax[i]		, "/FROMHVAC/SET/CTLMODE");				
+	FuncCmdArray[i++] 	=	&CommandFunctionSetCtlMode;
+ 
+	strcpy((char*)GeneralCmdSyntax[i]		, "/FROMHVAC/SET/OPMODE");				
+	FuncCmdArray[i++] 	=	&CommandFunctionSetOpMode;
+	
+	uiCmdCount = i;
+}
+
+/**
+  * @brief Extract the payload from the command buffer by using the 
+  *        space 0x20 between the command and the payload data
+  * @param *pBuff: pointer to received buffer
+  * @return TRUE if payload found FALSE if none found
+  */
+static uint8_t  GetPayload(uint8_t *pBuff)
+{
+		uint8_t *ptr,*ptrStart;
+    
+		// look for ' ' indicating end of command, starting payload
+		ptrStart = ptr = (uint8_t*)strtok((char*)pBuff, sCMDDELIM);	
+		ptr = (uint8_t*)strtok(NULL, sVALDELIM);	
+		
+	  sprintf((char*)sPayload,"%s",ptr);//extract payload starting from tokenized cmd 
+		
+		/* Means no space between cmd & payload, error */
+		if(ptr == ptrStart){
+					ptr = NULL;
+		}
+		
+		if(ptr != NULL){
+					return TRUE;
+		}else{
+					return FALSE;
+		}
+}
+
+/**
+  * @brief  Parse received frame from UART and set respective HVAC control data 
+  * @param  *pBuff: pointer to uint8_t rx buffer
+  * @param  len: Length of the data received
+  * @note   None
+  * @retval None
+  */
 void ParseMqttText(uint8_t *pBuff,uint16_t len)
 {
-	
-	
+    int i;
+    
+		ConvertToUpper((char*)pBuff);
+    
+    //cycle through cmd syntax array looking for syntax match,  match= execute function ptr at that index
+    for(i=0;i<uiCmdCount;i++)
+    {
+        if(strncmp((char*)pBuff,(char*)GeneralCmdSyntax[i],strlen((char*)GeneralCmdSyntax[i])) == 0)
+        {
+						/* If payload found set value in data structure */
+						if(GetPayload(pBuff)){
+									(*FuncCmdArray[i])((uint8_t*)&sPayload);
+						}
+						return;
+        }
+    }
 }
 
 /**
@@ -375,8 +569,9 @@ void ParseMqttText(uint8_t *pBuff,uint16_t len)
 	
 		//test if still sending last message
 		if(uaCtl_t.bTxCplt == 0){
-				hSta = HAL_BUSY;
-				return hSta;
+			//TODO: Bypass this error until I can debug it
+				//hSta = HAL_BUSY;
+				//return hSta;
 		}
 	
 		//test to make sure uart is ready
@@ -407,5 +602,88 @@ void ParseMqttText(uint8_t *pBuff,uint16_t len)
 		}
 		
 		return hSta;
+}
+
+static void TransmitStatus(void)
+{
+		static uint32_t t_run=0;
+		static uint8_t uMsgIdx=0;
+		uint8_t sCtlMode[12];
+		static uint8_t mqttbuff[64];
+	
+		/* Stuff to do every x mS */
+		if(TICKGETU32() > t_run + TXINTERVALMS){
+				t_run = TICKGETU32();
+				if(HAL_UART_GetState(&huart5) == HAL_UART_STATE_READY ||													 
+								HAL_UART_GetState(&huart5) == HAL_UART_STATE_BUSY_RX)
+				 {
+						if(uMsgIdx ==0){
+							uMsgIdx++;
+							/*Format and transmit MQTT frame for ROOM TEMP */
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TEMP/ROOM %2.0f%s",ctldata_s.condCoil.rdb,uartCMDTERM);
+							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+						}else if(uMsgIdx ==1){
+							uMsgIdx++;
+							/*Format and transmit MQTT frame for Condensing Coil TEMP */
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TEMP/COND %2.0f%s",ctldata_s.condCoil.rdb,uartCMDTERM);
+							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+						}else if(uMsgIdx ==2){
+							uMsgIdx++;
+							/*Format and transmit MQTT frame for PWR ON state */
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/PWR %s%s",
+									HAL_GPIO_ReadPin(DI_ACMODELED_GPIO_Port,DI_ACMODELED_Pin) == GPIO_PIN_RESET ? "ON" : "OFF",
+									uartCMDTERM);
+							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+						}else if(uMsgIdx ==3){
+							uMsgIdx++;
+							/*Format and transmit MQTT frame for Frost Error state */
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/FROSTERR %s%s",ctldata_s.bFrostCheck == TRUE ? "TRUE" : "FALSE",uartCMDTERM);
+							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+						}else if(uMsgIdx ==4){
+							uMsgIdx++;
+							/*Format and transmit MQTT frame for demand temperature */
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TEMP/DMD %2.0f%s",ctldata_s.acCooTemps.dmd,uartCMDTERM);
+							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+						}else if(uMsgIdx ==5){
+							uMsgIdx++;
+							if(ctldata_s.ctlmode_e == ECTLMD_OFF){
+									memcpy(&sCtlMode,"OFF",strlen("OFF"));
+							}else if(ctldata_s.ctlmode_e == ECTLMD_TSTAT){
+									memcpy(&sCtlMode,"TSTAT",strlen("TSTAT"));
+							}else if(ctldata_s.ctlmode_e == ECTLMD_REMOTE){
+									memcpy(&sCtlMode,"REMOTE-SW",strlen("REMOTE-SW"));
+							}else if(ctldata_s.ctlmode_e == ECTLMD_MANUAL){
+									memcpy(&sCtlMode,"MANUAL-IOPIN",strlen("MANUAL-IOPIN"));
+							} 
+							/*Format and transmit MQTT frame for Demand mode */
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/CTLMODE %s%s",sCtlMode,uartCMDTERM);
+							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+						}else if(uMsgIdx ==6){
+							uMsgIdx++;
+							if(ctldata_s.dmdmode_e == EDMDMD_NONE  ){
+									memcpy(&sCtlMode,"OFF",strlen("OFF"));
+							}else if(ctldata_s.dmdmode_e == EDMDMD_COOL){
+									memcpy(&sCtlMode,"COOL",strlen("COOL"));
+							}else if(ctldata_s.dmdmode_e == EDMDMD_HEAT){
+									memcpy(&sCtlMode,"HEAT",strlen("HEAT"));
+							} 
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/DMDMODE %s%s",sCtlMode,uartCMDTERM);
+							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+						}else if(uMsgIdx ==7){
+							uMsgIdx++;
+							/*Format and transmit MQTT frame for warm-up period remaining time */
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TIME/WRM %d%s",ctldata_s.ulWarmupSec,uartCMDTERM);
+							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+						}else if(uMsgIdx ==8){
+							uMsgIdx++;
+							/*Format and transmit MQTT frame for up-time */
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TIME/RUN %s%s",time_s.str,uartCMDTERM);
+							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
+						}			
+						else{
+							uMsgIdx =0;
+						}	
+				}
+		}
 }
 /************************ (C) COPYRIGHT Astrodyne Tdi *****END OF FILE****/
