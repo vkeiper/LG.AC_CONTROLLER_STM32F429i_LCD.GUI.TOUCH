@@ -152,9 +152,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>494</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134268248</Address>
+          <LineNumber>301</LineNumber>
+          <EnabledFlag>0</EnabledFlag>
+          <Address>134255580</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -163,14 +163,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\modbusrtu.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\494</Expression>
+          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\301</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>189</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134227544</Address>
+          <LineNumber>191</LineNumber>
+          <EnabledFlag>0</EnabledFlag>
+          <Address>134227564</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -179,23 +179,7 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\modbusrtu.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\189</Expression>
-        </Bp>
-        <Bp>
-          <Number>2</Number>
-          <Type>0</Type>
-          <LineNumber>300</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134255560</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\Src\modbusrtu.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\300</Expression>
+          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\191</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -277,7 +261,7 @@
         <Mm>
           <WinNumber>2</WinNumber>
           <SubType>0</SubType>
-          <ItemText>0x200008da</ItemText>
+          <ItemText>0x20000b28</ItemText>
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow2>

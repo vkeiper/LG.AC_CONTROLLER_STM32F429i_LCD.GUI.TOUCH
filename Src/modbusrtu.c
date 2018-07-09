@@ -49,10 +49,12 @@
 #define sVALDELIM "\n"
 #define TXINTERVALMS 100u
 
+#define STRMATCHED 0u
+
 /*
  * Comment out define below to use with ESP32 MQTT to UART GWY, it does not expect a CR
  */
-#define WINDOWSTERMMODE
+//#define WINDOWSTERMMODE
 #ifdef WINDOWSTERMMODE
 	#define uartCMDTERM "\r\n"
 #else
@@ -270,7 +272,6 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
 			static uint16_t uiLastBufferRollerCnt=0;
-			uint8_t sFirstChunk[64], sSecondChunk[64];
 			uint8_t lenSecondChunk,lenFirstChunk;
 			uint8_t *pFirst,*pSecond;
 			
@@ -383,7 +384,7 @@ void SetMbRtuEndOfFrame(void)
 
 static void CommandFunctionSetPwrState(uint8_t *pBuff)
 {
-		if(strncmp((char*)pBuff,"ON",strlen("ON"))){
+		if(strncmp((char*)pBuff,"ON",strlen("ON"))==STRMATCHED){
 				ctldata_s.dmdmode_e = EDMDMD_COOL;
 		}else{
 				ctldata_s.dmdmode_e = EDMDMD_NONE;
@@ -399,13 +400,13 @@ static void CommandFunctionSetTempDmd(uint8_t *pBuff)
 
 static void CommandFunctionSetCtlMode(uint8_t *pBuff)
 {
-		if(strncmp((char*)pBuff,"OFF",strlen("OFF"))){
+		if(strncmp((char*)pBuff,"OFF",strlen("OFF"))== STRMATCHED){
 				ctldata_s.ctlmode_e = ECTLMD_OFF;
-		}else if(strncmp((char*)pBuff,"TSTAT",strlen("TSTAT"))){
+		}else if(strncmp((char*)pBuff,"TSTAT",strlen("TSTAT"))==STRMATCHED){
 				ctldata_s.ctlmode_e = ECTLMD_TSTAT;
-		}else if(strncmp((char*)pBuff,"REMOTE",strlen("REMOTE"))){
+		}else if(strncmp((char*)pBuff,"REMOTE",strlen("REMOTE"))==STRMATCHED){
 				ctldata_s.ctlmode_e = ECTLMD_REMOTE;
-		}else if(strncmp((char*)pBuff,"MANUAL",strlen("MANUAL"))){
+		}else if(strncmp((char*)pBuff,"MANUAL",strlen("MANUAL"))==STRMATCHED){
 				ctldata_s.ctlmode_e = ECTLMD_MANUAL;
 		}else{
 				ctldata_s.ctlmode_e = ECTLMD_OFF;
@@ -415,11 +416,11 @@ static void CommandFunctionSetCtlMode(uint8_t *pBuff)
 
 static void CommandFunctionSetOpMode(uint8_t *pBuff)
 {
-		if(strncmp((char*)pBuff,"OFF",strlen("OFF"))){
+		if(strncmp((char*)pBuff,"OFF",strlen("OFF"))==STRMATCHED){
 				ctldata_s.dmdmode_e = EDMDMD_NONE;
-		}else if(strncmp((char*)pBuff,"COOL",strlen("COOL"))){
+		}else if(strncmp((char*)pBuff,"COOL",strlen("COOL"))==STRMATCHED){
 				ctldata_s.dmdmode_e = EDMDMD_COOL;
-		}else if(strncmp((char*)pBuff,"HEAT",strlen("HEAT"))){
+		}else if(strncmp((char*)pBuff,"HEAT",strlen("HEAT"))==STRMATCHED){
 				ctldata_s.dmdmode_e = EDMDMD_HEAT;
 		}else{
 				ctldata_s.dmdmode_e = EDMDMD_NONE;
@@ -432,16 +433,16 @@ static void CommandFunctionSetOpMode(uint8_t *pBuff)
 static void LoadSyntax(void)
 {
 	int i=0;
-	strcpy((char*)GeneralCmdSyntax[i]		, "/FROMHVAC/SET/PWR");				
+	strcpy((char*)GeneralCmdSyntax[i]		, "/TOHVAC/SET/PWR");				
 	FuncCmdArray[i++] 	=	&CommandFunctionSetPwrState;
 
-	strcpy((char*)GeneralCmdSyntax[i]		, "/FROMHVAC/SET/TEMP/DMD");				
+	strcpy((char*)GeneralCmdSyntax[i]		, "/TOHVAC/SET/TEMP/DMD");				
 	FuncCmdArray[i++] 	=	&CommandFunctionSetTempDmd;
 
-	strcpy((char*)GeneralCmdSyntax[i]		, "/FROMHVAC/SET/CTLMODE");				
+	strcpy((char*)GeneralCmdSyntax[i]		, "/TOHVAC/SET/CTLMODE");				
 	FuncCmdArray[i++] 	=	&CommandFunctionSetCtlMode;
  
-	strcpy((char*)GeneralCmdSyntax[i]		, "/FROMHVAC/SET/OPMODE");				
+	strcpy((char*)GeneralCmdSyntax[i]		, "/TOHVAC/SET/OPMODE");				
 	FuncCmdArray[i++] 	=	&CommandFunctionSetOpMode;
 	
 	uiCmdCount = i;
@@ -488,19 +489,29 @@ static uint8_t  GetPayload(uint8_t *pBuff)
   */
 static void SetCmdString(uint8_t *pCmdStr,uint8_t *pUartRxBuffer ,uint8_t *pThisCmd, uint8_t len)
 {
-		uint8_t len2=0,len3=0;
-	  
+		uint8_t len2=0,len3=0,length=0;
+	  uint8_t *pChr;
+	
+		pChr = (uint8_t*)strchr((char*)pThisCmd,'\n');
+		
+		length = (pChr+1) - pThisCmd;
+		
+	/*TODO: starnge bug where len gets cleared, so for work around I do the chat searc looking for \n deliminator*/
+		if(len==0){
+			len = length;
+		}
+		
 		/* If this cmd crosses the end of the buffer and rolls back to the start */
-		if((pThisCmd + len) > pRxBufferEnd){
+		if((pThisCmd + length) > pRxBufferEnd){
 				/* 1st copy partial string from current pointer to end of buffer */
 				len2 = (((pUartRxBuffer) + MAXBUFFLEN) - pThisCmd);
 				memcpy(pCmdStr,pThisCmd,len2);
 				/* Calc the remaining bytes left */
-				len3 = len - len2;
+				len3 = length - len2;
 				/* Copy reminaing bytes to command string buffer offset by the qty bytes copied in the 1st copy operation */
 				memcpy(pCmdStr+len2,pUartRxBuffer,len3);
 		}else{
-				memcpy(pCmdStr,pThisCmd,len);
+				memcpy(pCmdStr,pThisCmd,length);
 		
 		}
 }
