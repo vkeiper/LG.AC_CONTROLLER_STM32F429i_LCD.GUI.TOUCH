@@ -152,9 +152,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>375</LineNumber>
+          <LineNumber>494</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134255712</Address>
+          <Address>134268248</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -163,14 +163,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\modbusrtu.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\375</Expression>
+          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\494</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>250</LineNumber>
+          <LineNumber>189</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134227674</Address>
+          <Address>134227544</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -179,14 +179,14 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\modbusrtu.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\250</Expression>
+          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\189</Expression>
         </Bp>
         <Bp>
           <Number>2</Number>
           <Type>0</Type>
-          <LineNumber>212</LineNumber>
+          <LineNumber>300</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134227610</Address>
+          <Address>134255560</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -195,23 +195,7 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\Src\modbusrtu.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\212</Expression>
-        </Bp>
-        <Bp>
-          <Number>3</Number>
-          <Type>0</Type>
-          <LineNumber>457</LineNumber>
-          <EnabledFlag>0</EnabledFlag>
-          <Address>0</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>0</BreakIfRCount>
-          <Filename>..\Src\modbusrtu.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression></Expression>
+          <Expression>\\lgac_ctlr\../Src/modbusrtu.c\300</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -235,6 +219,51 @@
           <WinNumber>1</WinNumber>
           <ItemText>RxBuffer</ItemText>
         </Ww>
+        <Ww>
+          <count>4</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>pRxdCmds</ItemText>
+        </Ww>
+        <Ww>
+          <count>5</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>uiMbRxdCmdCnt,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>6</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>RxdCmdLen</ItemText>
+        </Ww>
+        <Ww>
+          <count>7</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>CmdStringBuffer</ItemText>
+        </Ww>
+        <Ww>
+          <count>8</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>CmdIdx</ItemText>
+        </Ww>
+        <Ww>
+          <count>9</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>pRxBuffer</ItemText>
+        </Ww>
+        <Ww>
+          <count>10</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>uiMbRxdCmdCnt</ItemText>
+        </Ww>
+        <Ww>
+          <count>11</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>uaCtl_t.uiBufferRollerCnt</ItemText>
+        </Ww>
+        <Ww>
+          <count>12</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>uaCtl_t.RxByteCnt,0x0A</ItemText>
+        </Ww>
       </WatchWindow1>
       <MemoryWindow1>
         <Mm>
@@ -244,6 +273,14 @@
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow1>
+      <MemoryWindow2>
+        <Mm>
+          <WinNumber>2</WinNumber>
+          <SubType>0</SubType>
+          <ItemText>0x200008da</ItemText>
+          <AccSizeX>0</AccSizeX>
+        </Mm>
+      </MemoryWindow2>
       <Tracepoint>
         <THDelay>0</THDelay>
       </Tracepoint>

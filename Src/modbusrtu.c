@@ -43,6 +43,7 @@
 
 #define QTYCMDS 4u
 #define MAXCHARS 32u
+#define MAXBUFFLEN 128u
 
 #define sCMDDELIM " "
 #define sVALDELIM "\n"
@@ -75,6 +76,7 @@ typedef struct{
   uint8_t bRxOvfl;
   uint8_t RetryCnt;
   uint8_t bEOF;/*EndOfFrame elapsed*/
+	uint16_t uiBufferRollerCnt;
 }t_uartctl;
 
 t_uartctl uaCtl_t;
@@ -93,19 +95,25 @@ typedef enum{
 
 static e_UartState uaState;
 
-uint8_t RxBuffer[128],TxBuffer[128],rxtmp[128];
+uint8_t RxBuffer[MAXBUFFLEN],CmdStringBuffer[MAXBUFFLEN/2],rxtmp[MAXBUFFLEN];
 
 uint8_t *pRxBuffer = &RxBuffer[0];
-uint8_t *pTxBuffer = &TxBuffer[0];
+uint8_t *pRxBufferEnd = &RxBuffer[0]+ (MAXBUFFLEN-1);
+
 uint16_t uiMbRxdCmdCnt=0;
-uint8_t GeneralCmdSyntax[QTYCMDS][64];
+uint8_t GeneralCmdSyntax[QTYCMDS][MAXBUFFLEN/2];
 void (*FuncCmdArray[QTYCMDS])(uint8_t *cmd);
 static uint16_t uiCmdCount;
-static uint8_t sPayload[64];
+static uint8_t sPayload[MAXBUFFLEN/2];
 
+static uint8_t *pRxdCmds[10];
+static uint8_t RxdCmdLen[10];
+
+static uint8_t CmdIdx=0;
 /* Private function prototypes -----------------------------------------------*/
 static void LoadSyntax(void);
 static uint8_t  GetPayload(uint8_t *pBuff);
+static void SetCmdString(uint8_t *pCmdStr,uint8_t *pUartRxBuffer ,uint8_t *pThisCmd, uint8_t len);
 static void ParseMqttText(uint8_t *pBuff,uint16_t len);
 static void CommandFunctionSetPwrState(uint8_t *pBuff);
 static void CommandFunctionSetTempDmd(uint8_t *pBuff);
@@ -119,7 +127,7 @@ static void _MBDumpFrame(void)
     /*Clear this to reinit for RX mode*/
     uaCtl_t.t_LstRxChar =0;
     pRxBuffer = &RxBuffer[0];
-    memset(pRxBuffer,0,sizeof(RxBuffer));
+		memset(pRxBuffer,0,sizeof(RxBuffer));
 }
 /**
   * @brief  DoModbusRtu handles connection, control, & operation of UART layer
@@ -129,9 +137,9 @@ static void _MBDumpFrame(void)
   */
 uint8_t DoUartServer(void)
 {
-  uint8_t retval = 0x00, bReady4Tx;
-	uint32_t t_RxIeOff=0;
-    
+  uint8_t retval = 0x00;
+//	uint32_t t_RxIeOff=0;
+  int i=0;  
     /*Main State Machine*/
     switch (uaState){
 
@@ -150,9 +158,8 @@ uint8_t DoUartServer(void)
       uaCtl_t.bEOF = 0;
 			/*Start off with pointer at start of buffer*/
 			pRxBuffer = &RxBuffer[0];
-			pTxBuffer = &TxBuffer[0];
 			LoadSyntax();
-			
+			memset(pRxdCmds,0u,sizeof(pRxdCmds));
 			MX_UART5_Init();
 
 			
@@ -175,122 +182,24 @@ uint8_t DoUartServer(void)
 		break;
 
 		case UAWAIT4RX:
-						
-						if(uaCtl_t.bRxdData){
-								uaCtl_t.bRxdData =0;
-								uaCtl_t.t_LstRxChar = 0;
-								uaCtl_t.bEOF = 1;
-						}
-            /*Wait for 3.5 char time EOF timer*/
-            /* 1st bytes must be received in the uart ISR*/
-            if(uaCtl_t.bEOF ==1)
-            {
-                /*Reset pointer to start of rx buff*/
-                pRxBuffer = &RxBuffer[0];
-                /*Allow UART RX ISR to poppulate buffer*/
-                uaCtl_t.bEOF =0;
-                uaState = UAPROCFRAME;
-								t_RxIeOff=0;//must have just rxd a frame so clear timer
-                break;
-            }else{
-								/* Transmit status msg in round robin */
-								TransmitStatus();
-							
-								/* Trap if RX ISR off */
-//								if(t_RxIeOff ==0 && (__HAL_UART_GET_FLAG(&huart5,UART_FLAG_RXNE) == RESET)){
-//										t_RxIeOff = TICKGETU32();
-//										
-//								}
-								
-								if(TICKGETU32() > t_RxIeOff + 1000){
-										
-										if(HAL_UART_Receive_IT(&huart5, &rxtmp[0], 1) != HAL_OK)
-										{
-												t_RxIeOff =0;
-											
-										}else{
-												t_RxIeOff = TICKGETU32();
-										
-										}
+						i=0;
+						while( i <10){
+								if(pRxdCmds[i] != 0u){
+										/* rx pbuff to MODBUS processor */
+										ParseMqttText(pRxdCmds[i], RxdCmdLen[CmdIdx-1]);
+										pRxdCmds[i] = 0u;
 								}
-								
+								i++;
 						}
-           				
+						CmdIdx=0;//we've executed all the cmds in the buffer so reset
+						/* Transmit status msg's in round robin */
+						TransmitStatus();
+						/*Go Back to RX mode*/
+						uaState = UAWAIT4RX;
+								
 		break;	
 	  
-		case UARXDDATA:
-				uaState = UAPROCFRAME;               
-		break;
-	  
-		case UAPROCFRAME:
-            
-            /* rx pbuff to MODBUS processor */
-            ParseMqttText(&RxBuffer[0], uaCtl_t.RxByteCnt);
-						/*ensure we dont TX and that rxbuffer is cleared*/
-						uaCtl_t.TxLen =0;
 		
-            /* Only TX response if TX len >0 */
-            if(uaCtl_t.TxLen >0)
-            {
-                /*TODO: Debug Code, until we wire this to the modbus handler*/
-                uaCtl_t.bTxRqd =1;
-                uaState = UATXDATA;
-                
-            }else{
-                /*Clears RxBuffer, LastCharTime, Resets ptr to rxbuffer[0]*/
-                _MBDumpFrame();
-                
-                /*Go BAck to RX mode*/
-                uaState = UAWAIT4RX;
-            }
-						
-						/*## Re-Start UART reception IT process ##*/  
-						/* Any data received will be stored buffer via the pointer passed in : the number max of 
-						 data received is 1 char */
-						if(HAL_UART_Receive_IT(&huart5, &rxtmp[0], 1) != HAL_OK)
-						{
-								/* Transfer error in reception process */
-							 // uaCtl_t.bRxErr =1;     
-						}
-						
-		break;
-	  
-		case UATXDATA:
-			
-			/*Wait for MB server to set flag to send data back*/
-			/*ps, this flag is cleaared with the TXCMPLT ISR cb*/
-			if(uaCtl_t.bTxRqd ==1)
-			{
-						uaCtl_t.bTxRqd =0;
-            /*## Ensure UART is not busy ##*/ 
-                bReady4Tx =0;
-				do {
-							 if(HAL_UART_GetState(&huart5) == HAL_UART_STATE_READY ||													 
-									HAL_UART_GetState(&huart5) == HAL_UART_STATE_BUSY_RX)
-							 {
-									 bReady4Tx =1;
-							 }
-                       
-				}while(bReady4Tx == 0);
-				
-				/*Start the transmission process */  
-				if(HAL_UART_Transmit_IT(&huart5, pTxBuffer, uaCtl_t.TxLen)!= HAL_OK)
-				{
-						/* Transfer error in transmission process */
-						uaCtl_t.bTxErr =1;
-				}else{
-						uaCtl_t.bTxCplt =0;
-        }
-				
-			}else{
-						/*Wait for TX to finish*/
-						if(uaCtl_t.bTxCplt ==1)
-						{
-								/*back to waiting 4 receive state*/
-								uaState = UAWAIT4RX;
-						}
-			}			
-		break;
 	  
 	  
 		case UAERR:
@@ -360,44 +269,74 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
   */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
+			static uint16_t uiLastBufferRollerCnt=0;
+			uint8_t sFirstChunk[64], sSecondChunk[64];
+			uint8_t lenSecondChunk,lenFirstChunk;
+			uint8_t *pFirst,*pSecond;
+			
+							
        
-        /* Only get here if 1. In UAWAIT4RX state
-           2. Gap between char <1.5 char time
-        */
-        /* Data received will be stored in buffer via the pointer passed in*/
-       /*Store next char in next location*/
-        if(uaCtl_t.RxByteCnt +1 < (sizeof(RxBuffer)+1)){
-            /*Store uart buff to modbus rxbuffer at location pointed to, also inc pointer for next time*/
-            *pRxBuffer = rxtmp[0];
-            pRxBuffer++;
-            uaCtl_t.RxByteCnt++;
-					  if(rxtmp[0] == '\n'){
-									uaCtl_t.bRxdData = 1;
-						}else{
-							  /* Get more chars */
-						    if(HAL_UART_Receive_IT(&huart5, &rxtmp[0], 1) != HAL_OK)
-								{
-										/* Transfer error in reception process */
-									 // uaCtl_t.bRxErr =1;     
-								}
+			/* Only get here if 1. In UAWAIT4RX state
+				 2. Gap between char <1.5 char time
+			*/
+			/* Data received will be stored in buffer via the pointer passed in*/
+		 /*Store next char in next location*/
+			if(pRxBuffer > pRxBufferEnd){
+					/* Reset  pointer to beginning of buffer*/
+					pRxBuffer = &RxBuffer[0];
+					*pRxBuffer = rxtmp[0];
+					uaCtl_t.RxByteCnt++;
+					uaCtl_t.uiBufferRollerCnt++;
+					
+			}else{
+					/*Store uart buff to modbus rxbuffer at location pointed to, also inc pointer for next time*/
+					*pRxBuffer = rxtmp[0];
+					uaCtl_t.RxByteCnt++;
+					
+			}
+			
+			/* look for cmd terminator */
+			if(rxtmp[0] == '\n'){
+						if(CmdIdx >= 10){
+								CmdIdx=0;
 						}
-        }else{
-            /* RxBuffer Overflow error*/
-           // uaCtl_t.bRxOvfl =1;      
-        }
-    //}
-    
+						RxdCmdLen[CmdIdx] = uaCtl_t.RxByteCnt;
+						/* if we rolled over we have to calculate the cmd start address in the buffer taking the rollover into account */
+						if(uiLastBufferRollerCnt == uaCtl_t.uiBufferRollerCnt){
+							
+								pRxdCmds[CmdIdx++] = ((pRxBuffer+1) - (uaCtl_t.RxByteCnt));
+						}else{
+								//subtract the current ptr to start of buffer to get qty bytes of the last chunk of the string
+								lenSecondChunk = (pRxBuffer+1) - &RxBuffer[0];
+								//subtract length of 2nd chunk from total length of cmd string
+								lenFirstChunk = uaCtl_t.RxByteCnt - lenSecondChunk;
+							
+								//calculate 1st chunk start address, subtract the length 1St chunk from the RxBuffer end address
+								pFirst = pRxBufferEnd+1 - lenFirstChunk;
+								/* Set Start Address  */
+								pRxdCmds[CmdIdx++] = pFirst;
+							
+								uiLastBufferRollerCnt = uaCtl_t.uiBufferRollerCnt;
+						}
+						uaCtl_t.RxByteCnt=0;
+			}
+			
+			/* Increase buffer pointer */
+			pRxBuffer++;
+			
+			
+	
     /*## Re-Start UART reception IT process ##*/  
     /* Any data received will be stored buffer via the pointer passed in : the number max of 
      data received is 1 char */
-//    if(HAL_UART_Receive_IT(&huart5, &rxtmp[0], 1) != HAL_OK)
-//    {
-//        /* Transfer error in reception process */
-//       // uaCtl_t.bRxErr =1;     
-//    }
+    if(HAL_UART_Receive_IT(&huart5, &rxtmp[0], 1) != HAL_OK)
+    {
+        /* Transfer error in reception process */
+        uaCtl_t.bRxErr =1;     
+    }
     
-    /*Start end of frame timer*/
-    //MX_Timer4_StartStop(TMRRUN);
+
+		
 }
 
 /**
@@ -536,6 +475,36 @@ static uint8_t  GetPayload(uint8_t *pBuff)
 		}
 }
 
+
+/**
+  * @brief  The Uart reception buffer is a ring buffer and the commands could roll over the end of the buffer.
+  *         This function function extracts the complete command string even acroos that barrier. 
+  * @param  *pCmdStr: pointer to command string buffer used to test aganist command syntax
+  * @param  *pUartRxBuffer, pointer to the actual uart rxbuffer.
+  * @param  *pThisCmd: pointer to the address this command starts at within the uart rx buffer
+  * @param  len: Length of the data for this command
+  * @note   None
+  * @retval None
+  */
+static void SetCmdString(uint8_t *pCmdStr,uint8_t *pUartRxBuffer ,uint8_t *pThisCmd, uint8_t len)
+{
+		uint8_t len2=0,len3=0;
+	  
+		/* If this cmd crosses the end of the buffer and rolls back to the start */
+		if((pThisCmd + len) > pRxBufferEnd){
+				/* 1st copy partial string from current pointer to end of buffer */
+				len2 = (((pUartRxBuffer) + MAXBUFFLEN) - pThisCmd);
+				memcpy(pCmdStr,pThisCmd,len2);
+				/* Calc the remaining bytes left */
+				len3 = len - len2;
+				/* Copy reminaing bytes to command string buffer offset by the qty bytes copied in the 1st copy operation */
+				memcpy(pCmdStr+len2,pUartRxBuffer,len3);
+		}else{
+				memcpy(pCmdStr,pThisCmd,len);
+		
+		}
+}
+
 /**
   * @brief  Parse received frame from UART and set respective HVAC control data 
   * @param  *pBuff: pointer to uint8_t rx buffer
@@ -546,16 +515,22 @@ static uint8_t  GetPayload(uint8_t *pBuff)
 void ParseMqttText(uint8_t *pBuff,uint16_t len)
 {
     int i;
-    
+    int nChars=0;
+	
 		ConvertToUpper((char*)pBuff);
+	
+		SetCmdString(&CmdStringBuffer[0],&RxBuffer[0] ,pBuff, len);
     
     //cycle through cmd syntax array looking for syntax match,  match= execute function ptr at that index
     for(i=0;i<uiCmdCount;i++)
     {
-        if(strncmp((char*)pBuff,(char*)GeneralCmdSyntax[i],strlen((char*)GeneralCmdSyntax[i])) == 0)
+			nChars = strlen((char*)GeneralCmdSyntax[i]);
+			
+			//TODO: Add function to roll past the end of the buffer and wrap back through to the begining.
+        if(strncmp((char*)CmdStringBuffer,(char*)GeneralCmdSyntax[i],strlen((char*)GeneralCmdSyntax[i])) == 0)
         {
 						/* If payload found set value in data structure */
-						if(GetPayload(pBuff)){
+						if(GetPayload(&CmdStringBuffer[0])){
 									(*FuncCmdArray[i])((uint8_t*)&sPayload);
 									uiMbRxdCmdCnt++;
 						}
