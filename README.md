@@ -1,6 +1,32 @@
 # LG.AC_CONTROLLER_STM32F429i_LCD.GUI.TOUCH
 Controls an LG AC unit over IR using an STM32F429i Discovery board with 2.4" LCD display for the UI and w/ touch screen for local control. The IR commands were reverse engineered from the original LG remote control. 
-//test 6/19/18
+
+
+#define MAJVER 0u
+#define MINVER 0u
+#define BLDVER 4u
+#define YERVER 18u
+#define MONVER 07u
+#define DAYVER 16u
+#define HRSVER 01u
+#define MNSVER 03u
+#define APPNUM "2018_A021"
+#define APPNAME "LG AC Controller\IR emulator w/ autodefrost w/MQTT-SER GWY"
+#define AUTHRFULL "Vince Keiper"
+#define AUTHRABR "V.K. "
+
+//v0.0.4  1807160103  1. Connected to Uart-Wifi gateway 
+//                    2. Changed LCD background to black as well as images
+//										3. Added OP mode and software demand Set point text on LCD
+//										4. Added handler for ESP32 opening uart wakeup transmission, was breaking uart parser
+//										5. Fixed sending the cond coil temp 2x, no room temp was being sent
+//										6. Default to AC ON on power up or reset
+//v0.0.3  1807051930  1. Moved IR led to PD7 from PD2
+//                    2. Addded UART5 Rx,TX for phy to talk to ESP3 MQTT to UART gateway 
+//v0.0.2  1805282335  1. Addded AcCooling sensing based on delta between condensor and room temps.
+//                    2. Added hide of snowflake if not AcCooling (already hid if FrostError 
+//                    3. Added uptime count to overwrite condensor temp label. Until I have a better place
+
 
 I created the dialog screen for the HVAC default status and control view.
 I just merged the IR Remote code, ADC\NTC routines and the main DoHvacSimple() from the doner project where I developed the IR remote emulator.

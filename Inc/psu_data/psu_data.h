@@ -74,7 +74,7 @@ struct s_control{
 	bool bFrostCheck;
   bool bFrostErr;
   bool bTstatCoolDmd;
-  struct s_temp acCoolTemps;
+  struct s_temp acCooTemps;
   struct s_temp condCoil;
 	int8_t tempint;
 	int8_t vrefint;
@@ -82,7 +82,6 @@ struct s_control{
 	uint32_t ulWarmupSec;/* seconds remaining until warmup period complete*/
 	uint8_t ucWarmPcnt;/*0-100 percntage remaining until warmup period complete*/
 	bool bModeCool;
-	bool bWifiReady;
 };
 
 extern struct s_control ctldata_s;

@@ -41,13 +41,13 @@
 #define strON    "ON"
 #define strOFF   "OFF"
 
-#define QTYCMDS 4u
+#define QTYCMDS 5u
 #define MAXCHARS 32u
 #define MAXBUFFLEN 128u
 
 #define sCMDDELIM " "
 #define sVALDELIM "\n"
-#define TXINTERVALMS 100u
+#define TXINTERVALMS 1000u
 
 #define STRMATCHED 0u
 
@@ -121,6 +121,7 @@ static void CommandFunctionSetPwrState(uint8_t *pBuff);
 static void CommandFunctionSetTempDmd(uint8_t *pBuff);
 static void CommandFunctionSetCtlMode(uint8_t *pBuff);
 static void CommandFunctionSetOpMode(uint8_t *pBuff);
+static void CommandFunctionSetTempDmd(uint8_t *pBuff);
 static void TransmitStatus(void);
 /* Private functions ---------------------------------------------------------*/
 
@@ -394,7 +395,7 @@ static void CommandFunctionSetPwrState(uint8_t *pBuff)
 
 static void CommandFunctionSetTempDmd(uint8_t *pBuff)
 {
-		ctldata_s.acCooTemps.dmd = atof((char*)pBuff);
+		ctldata_s.acCoolTemps.dmd = atof((char*)pBuff);
 }
 
 
@@ -427,6 +428,12 @@ static void CommandFunctionSetOpMode(uint8_t *pBuff)
 		}
 }
 
+
+static void CommandFunctionSetCommsRdy(uint8_t *pBuff)
+{
+		ctldata_s.bWifiReady = TRUE;
+}
+
 /******************************************************************************/
 /*                         LoadSyntax  					 		  												*/
 /******************************************************************************/
@@ -444,6 +451,9 @@ static void LoadSyntax(void)
  
 	strcpy((char*)GeneralCmdSyntax[i]		, "/TOHVAC/SET/OPMODE");				
 	FuncCmdArray[i++] 	=	&CommandFunctionSetOpMode;
+	
+	strcpy((char*)GeneralCmdSyntax[i]		, "VK3/HVAC1/COMMS/READY");				
+	FuncCmdArray[i++] 	=	&CommandFunctionSetCommsRdy;
 	
 	uiCmdCount = i;
 }
@@ -535,9 +545,9 @@ void ParseMqttText(uint8_t *pBuff,uint16_t len)
     //cycle through cmd syntax array looking for syntax match,  match= execute function ptr at that index
     for(i=0;i<uiCmdCount;i++)
     {
-			nChars = strlen((char*)GeneralCmdSyntax[i]);
+				nChars = strlen((char*)GeneralCmdSyntax[i]);
 			
-			//TODO: Add function to roll past the end of the buffer and wrap back through to the begining.
+				//TODO: Add function to roll past the end of the buffer and wrap back through to the begining.
         if(strncmp((char*)CmdStringBuffer,(char*)GeneralCmdSyntax[i],strlen((char*)GeneralCmdSyntax[i])) == 0)
         {
 						/* If payload found set value in data structure */
@@ -617,7 +627,7 @@ static void TransmitStatus(void)
 						if(uMsgIdx ==0){
 							uMsgIdx++;
 							/*Format and transmit MQTT frame for ROOM TEMP */
-							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TEMP/ROOM %2.0f%s",ctldata_s.condCoil.rdb,uartCMDTERM);
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TEMP/ROOM %2.0f%s",ctldata_s.acCoolTemps.rdb,uartCMDTERM);
 							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
 						}else if(uMsgIdx ==1){
 							uMsgIdx++;
@@ -639,7 +649,7 @@ static void TransmitStatus(void)
 						}else if(uMsgIdx ==4){
 							uMsgIdx++;
 							/*Format and transmit MQTT frame for demand temperature */
-							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TEMP/DMD %2.0f%s",ctldata_s.acCooTemps.dmd,uartCMDTERM);
+							sprintf((char*)&mqttbuff,"/FROMHVAC/GET/TEMP/DMD %2.0f%s",ctldata_s.acCoolTemps.dmd,uartCMDTERM);
 							AsyncTransmit(&mqttbuff[0],strlen((char*)&mqttbuff));
 						}else if(uMsgIdx ==5){
 							uMsgIdx++;

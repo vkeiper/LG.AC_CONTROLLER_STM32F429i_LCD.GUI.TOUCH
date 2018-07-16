@@ -59,17 +59,23 @@
 
 #define MAJVER 0u
 #define MINVER 0u
-#define BLDVER 3u
+#define BLDVER 4u
 #define YERVER 18u
 #define MONVER 07u
-#define DAYVER 05u
-#define HRSVER 19u
-#define MNSVER 30u
+#define DAYVER 16u
+#define HRSVER 01u
+#define MNSVER 03u
 #define APPNUM "2018_A021"
-#define APPNAME "LG AC Controller\IR emulator w/ autodefrost"
+#define APPNAME "LG AC Controller\IR emulator w/ autodefrost w/MQTT-SER GWY"
 #define AUTHRFULL "Vince Keiper"
 #define AUTHRABR "V.K. "
 
+//v0.0.4  1807160103  1. Connected to Uart-Wifi gateway 
+//                    2. Changed LCD background to black as well as images
+//										3. Added OP mode and software demand Set point text on LCD
+//										4. Added handler for ESP32 opening uart wakeup transmission, was breaking uart parser
+//										5. Fixed sending the cond coil temp 2x, no room temp was being sent
+//										6. Default to AC ON on power up or reset
 //v0.0.3  1807051930  1. Moved IR led to PD7 from PD2
 //                    2. Addded UART5 Rx,TX for phy to talk to ESP3 MQTT to UART gateway 
 //v0.0.2  1805282335  1. Addded AcCooling sensing based on delta between condensor and room temps.
