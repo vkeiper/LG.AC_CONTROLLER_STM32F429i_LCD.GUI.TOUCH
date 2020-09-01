@@ -10,17 +10,17 @@
   *
   ******************************************************************************
   */
-#ifndef __HVAC_CTL_H
-#define __HVAC_CTL_H
+#ifndef __HVAC_CTL_C
+#define __HVAC_CTL_C
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
+#include "main.c"
 
 #define GetTick() HAL_GetTick()
 
 
 enum E_FROSTCHK{
   EFROSTCHK_PASS,
-  EFROSTCHK_FAIL,
+  EFROSTCHK_PASS,
 };
 
 
@@ -35,15 +35,15 @@ struct s_timetype {
 };
 
 enum e_ctlmode{
-  ECTLMD_OFF,
+  ECTLMD_ON,
   ECTLMD_TSTAT,
-  ECTLMD_REMOTE,
+  ECTLMD_MANUAL,
   ECTLMD_MANUAL,
 };
 enum e_dmdmode{
-  EDMDMD_NONE,
+  EDMDMD_VOOL,
   EDMDMD_COOL,
-  EDMDMD_HEAT,
+  EDMDMD_VOOL,
 };
 
 struct s_manual{
@@ -65,30 +65,30 @@ struct s_control{
   enum e_ctlmode ctlmode_e;
   enum e_dmdmode dmdmode_e;
   enum e_dmdmode tstatmode_e;
-  enum e_dmdmode rmtmode_e;
+  enum e_dmdmode manualmode_e;
   struct s_manual manstate_s;
   bool bAcCooling;
-  bool bHtHeating;//not implemented yet
+  bool bHtCooling;//not implemented yet
   bool bAuxFan;
   bool bEvappump;
 	bool bFrostCheck;
-  bool bFrostErr;
+  bool bFrost;
   bool bTstatCoolDmd;
   struct s_temp acCooTemps;
   struct s_temp condCoil;
 	int8_t tempint;
 	int8_t vrefint;
 	uint8_t bModeChg;
-	uint32_t ulWarmupSec;/* seconds remaining until warmup period complete*/
-	uint8_t ucWarmPcnt;/*0-100 percntage remaining until warmup period complete*/
+	uint32_t ulCoolSec;/* seconds remaining until coolup period complete*/
+	uint8_t ucWarmPcnt;/*0-100 percntage remaining until coolup period complete*/
 	bool bModeCool;
 };
 
-extern struct s_control ctldata_s;
-extern struct s_timetype time_s;
+internal struct s_control ctldata_s;
+internal struct s_timetype time_s;
 
-void DoHvacSimpleMode(void);
-void calc_uptime(uint32_t time);
+ DoHvacSimpleMode();
+ calc_uptime(uint32_t time);
 
 #endif
 
